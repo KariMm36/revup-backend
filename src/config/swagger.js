@@ -17,8 +17,10 @@ const options = {
     },
     servers: [
       {
-        url: `http://localhost:${process.env.PORT || 5000}`,
-        description: 'Local Development Server',
+        url: process.env.NODE_ENV === 'production'
+          ? 'https://revup-backend-production.up.railway.app'
+          : `http://localhost:${process.env.PORT || 5000}`,
+        description: process.env.NODE_ENV === 'production' ? 'Production Server' : 'Local Development Server',
       },
     ],
     components: {
