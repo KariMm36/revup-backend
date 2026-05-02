@@ -54,7 +54,8 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/seed', seedRoutes);
+// Seed route disabled after initial DB population
+// app.use('/api/seed', seedRoutes);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
