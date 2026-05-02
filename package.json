@@ -1,11 +1,14 @@
 {
-  "name": "jop-portal",
+  "name": "revup-backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "RevUp Job Portal REST API",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   },
   "keywords": [],
   "author": "",

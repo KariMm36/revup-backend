@@ -39,6 +39,11 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'RevUp API Docs',
 }));
 
+app.get('/api-docs.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+
 // ─── API Routes ──────────────────────────────────────────────────────────────
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
@@ -51,7 +56,11 @@ app.use('/api/notifications', notificationRoutes);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ success: true, message: 'RevUp API is live ', version: '3.0.0' });
+  res.json({ success: true, message: 'RevUp API is live 🚀', version: '3.0.0' });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', uptime: process.uptime() });
 });
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
