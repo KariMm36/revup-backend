@@ -18,6 +18,7 @@ const applicationRoutes = require('./routes/applicationRoutes');
 const skillRoutes = require('./routes/skillRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const seedRoutes = require('./routes/seedRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -53,6 +54,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/seed', seedRoutes);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
