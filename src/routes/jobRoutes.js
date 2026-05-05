@@ -95,7 +95,7 @@ router.get('/my-postings', protect, authorize('recruiter'), jobController.getMyP
  *               description: { type: string }
  *               location:    { type: string }
  *               job_type:    { type: string }
- *               salary_range:{ type: string }
+ *               salary_range: { type: string }
  *               skillIds:    { type: array, items: { type: integer } }
  *     responses:
  *       201: { description: Job created }

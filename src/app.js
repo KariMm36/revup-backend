@@ -59,7 +59,7 @@ app.use('/api/notifications', notificationRoutes);
 
 // ─── Health Check ────────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.json({ success: true, message: 'RevUp API is live 🚀', version: '3.0.0' });
+  res.json({ success: true, message: 'RevUp API is live ', version: '3.0.0' });
 });
 
 app.get('/health', (req, res) => {

@@ -25,7 +25,7 @@ const sendWelcomeEmail = async ({ to, name }) => {
  * Send a Password Reset email
  */
 const sendPasswordResetEmail = async ({ to, name, resetToken }) => {
-  const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+  const resetUrl = `${process.env.CLIENT_URL}/api/auth/reset-password/${resetToken}`;
   await transporter.sendMail({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,

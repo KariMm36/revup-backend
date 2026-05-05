@@ -1,0 +1,2071 @@
+﻿{
+    "openapi":  "3.0.0",
+    "info":  {
+                 "title":  "RevUp Job Portal API",
+                 "version":  "3.0.0",
+                 "description":  "## RevUp — AI-Powered Job Portal API",
+                 "contact":  {
+                                 "name":  "RevUp Dev Team"
+                             }
+             },
+    "servers":  [
+                    {
+                        "url":  "http://localhost:5000",
+                        "description":  "Local Development Server"
+                    }
+                ],
+    "components":  {
+                       "securitySchemes":  {
+                                               "bearerAuth":  {
+                                                                  "type":  "http",
+                                                                  "scheme":  "bearer",
+                                                                  "bearerFormat":  "JWT",
+                                                                  "description":  "Enter your JWT token. Obtain it from POST /api/auth/login"
+                                                              }
+                                           },
+                       "schemas":  {
+                                       "SuccessResponse":  {
+                                                               "type":  "object",
+                                                               "properties":  {
+                                                                                  "success":  {
+                                                                                                  "type":  "boolean",
+                                                                                                  "example":  true
+                                                                                              },
+                                                                                  "message":  {
+                                                                                                  "type":  "string"
+                                                                                              },
+                                                                                  "data":  {
+                                                                                               "type":  "object"
+                                                                                           }
+                                                                              }
+                                                           },
+                                       "ErrorResponse":  {
+                                                             "type":  "object",
+                                                             "properties":  {
+                                                                                "success":  {
+                                                                                                "type":  "boolean",
+                                                                                                "example":  false
+                                                                                            },
+                                                                                "message":  {
+                                                                                                "type":  "string"
+                                                                                            }
+                                                                            }
+                                                         },
+                                       "PaginationMeta":  {
+                                                              "type":  "object",
+                                                              "properties":  {
+                                                                                 "total":  {
+                                                                                               "type":  "integer"
+                                                                                           },
+                                                                                 "page":  {
+                                                                                              "type":  "integer"
+                                                                                          },
+                                                                                 "pages":  {
+                                                                                               "type":  "integer"
+                                                                                           }
+                                                                             }
+                                                          },
+                                       "User":  {
+                                                    "type":  "object",
+                                                    "properties":  {
+                                                                       "id":  {
+                                                                                  "type":  "integer",
+                                                                                  "example":  1
+                                                                              },
+                                                                       "name":  {
+                                                                                    "type":  "string",
+                                                                                    "example":  "Nour Vander"
+                                                                                },
+                                                                       "email":  {
+                                                                                     "type":  "string",
+                                                                                     "example":  "nour@example.com"
+                                                                                 },
+                                                                       "role":  {
+                                                                                    "type":  "string",
+                                                                                    "enum":  [
+                                                                                                 "seeker",
+                                                                                                 "recruiter",
+                                                                                                 "admin"
+                                                                                             ]
+                                                                                },
+                                                                       "bio":  {
+                                                                                   "type":  "string",
+                                                                                   "nullable":  true
+                                                                               },
+                                                                       "profile_pic":  {
+                                                                                           "type":  "string",
+                                                                                           "nullable":  true
+                                                                                       },
+                                                                       "resume_url":  {
+                                                                                          "type":  "string",
+                                                                                          "nullable":  true
+                                                                                      },
+                                                                       "is_active":  {
+                                                                                         "type":  "boolean",
+                                                                                         "example":  true
+                                                                                     }
+                                                                   }
+                                                },
+                                       "Job":  {
+                                                   "type":  "object",
+                                                   "properties":  {
+                                                                      "id":  {
+                                                                                 "type":  "integer"
+                                                                             },
+                                                                      "title":  {
+                                                                                    "type":  "string"
+                                                                                },
+                                                                      "description":  {
+                                                                                          "type":  "string"
+                                                                                      },
+                                                                      "location":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                      "job_type":  {
+                                                                                       "type":  "string",
+                                                                                       "enum":  [
+                                                                                                    "Full-time",
+                                                                                                    "Part-time",
+                                                                                                    "Contract",
+                                                                                                    "Internship",
+                                                                                                    "Remote",
+                                                                                                    "Hybrid"
+                                                                                                ]
+                                                                                   },
+                                                                      "salary_range":  {
+                                                                                           "type":  "string",
+                                                                                           "nullable":  true
+                                                                                       },
+                                                                      "status":  {
+                                                                                     "type":  "string",
+                                                                                     "enum":  [
+                                                                                                  "open",
+                                                                                                  "closed"
+                                                                                              ]
+                                                                                 }
+                                                                  }
+                                               },
+                                       "Application":  {
+                                                           "type":  "object",
+                                                           "properties":  {
+                                                                              "id":  {
+                                                                                         "type":  "integer"
+                                                                                     },
+                                                                              "job_id":  {
+                                                                                             "type":  "integer"
+                                                                                         },
+                                                                              "seeker_id":  {
+                                                                                                "type":  "integer"
+                                                                                            },
+                                                                              "status":  {
+                                                                                             "type":  "string",
+                                                                                             "enum":  [
+                                                                                                          "applied",
+                                                                                                          "shortlisted",
+                                                                                                          "rejected",
+                                                                                                          "auto-rejected",
+                                                                                                          "hired"
+                                                                                                      ]
+                                                                                         },
+                                                                              "stage_id":  {
+                                                                                               "type":  "integer",
+                                                                                               "nullable":  true
+                                                                                           },
+                                                                              "cover_letter":  {
+                                                                                                   "type":  "string",
+                                                                                                   "nullable":  true
+                                                                                               },
+                                                                              "resume_url":  {
+                                                                                                 "type":  "string",
+                                                                                                 "nullable":  true
+                                                                                             }
+                                                                          }
+                                                       },
+                                       "Course":  {
+                                                      "type":  "object",
+                                                      "properties":  {
+                                                                         "id":  {
+                                                                                    "type":  "integer"
+                                                                                },
+                                                                         "title":  {
+                                                                                       "type":  "string"
+                                                                                   },
+                                                                         "provider":  {
+                                                                                          "type":  "string",
+                                                                                          "example":  "Coursera"
+                                                                                      },
+                                                                         "link":  {
+                                                                                      "type":  "string",
+                                                                                      "format":  "uri"
+                                                                                  },
+                                                                         "skill_id":  {
+                                                                                          "type":  "integer"
+                                                                                      }
+                                                                     }
+                                                  },
+                                       "UserRoadmap":  {
+                                                           "type":  "object",
+                                                           "properties":  {
+                                                                              "id":  {
+                                                                                         "type":  "integer"
+                                                                                     },
+                                                                              "seeker_id":  {
+                                                                                                "type":  "integer"
+                                                                                            },
+                                                                              "failed_job_id":  {
+                                                                                                    "type":  "integer"
+                                                                                                },
+                                                                              "progress":  {
+                                                                                               "type":  "number",
+                                                                                               "example":  40
+                                                                                           },
+                                                                              "status":  {
+                                                                                             "type":  "string",
+                                                                                             "enum":  [
+                                                                                                          "in-progress",
+                                                                                                          "completed"
+                                                                                                      ]
+                                                                                         }
+                                                                          }
+                                                       }
+                                   }
+                   },
+    "security":  [
+                     {
+                         "bearerAuth":  [
+
+                                        ]
+                     }
+                 ],
+    "tags":  [
+                 {
+                     "name":  "Auth",
+                     "description":  "🔑 Authentication \u0026 Account Management (public + authenticated)"
+                 },
+                 {
+                     "name":  "Users",
+                     "description":  "👤 Seeker Profile, Skills, Resume \u0026 Learning Roadmap"
+                 },
+                 {
+                     "name":  "Companies",
+                     "description":  "🏢 Recruiter Company Profile Management"
+                 },
+                 {
+                     "name":  "Jobs",
+                     "description":  "💼 Job Listings — Browse, Post, and Manage"
+                 },
+                 {
+                     "name":  "Applications",
+                     "description":  "📄 Application Lifecycle + Kanban Pipeline + Skill Gap Analysis"
+                 },
+                 {
+                     "name":  "Interviews",
+                     "description":  "🎥 Video Interview Scheduling \u0026 Candidate Scorecards"
+                 },
+                 {
+                     "name":  "Skills",
+                     "description":  "🛠️ Global Skill Catalogue (Admin-managed)"
+                 },
+                 {
+                     "name":  "Notifications",
+                     "description":  "🔔 In-App Notification Centre"
+                 },
+                 {
+                     "name":  "Admin",
+                     "description":  "🛡️ Admin Panel — User Moderation \u0026 Audit Logs"
+                 }
+             ],
+    "paths":  {
+                  "/api/admin/users":  {
+                                           "get":  {
+                                                       "tags":  [
+                                                                    "Admin"
+                                                                ],
+                                                       "summary":  "Get all users with optional role filter and pagination",
+                                                       "security":  [
+                                                                        {
+                                                                            "bearerAuth":  [
+
+                                                                                           ]
+                                                                        }
+                                                                    ],
+                                                       "parameters":  [
+                                                                          {
+                                                                              "in":  "query",
+                                                                              "name":  "role",
+                                                                              "schema":  {
+                                                                                             "type":  "string",
+                                                                                             "enum":  [
+                                                                                                          "seeker",
+                                                                                                          "recruiter",
+                                                                                                          "admin"
+                                                                                                      ]
+                                                                                         }
+                                                                          },
+                                                                          {
+                                                                              "in":  "query",
+                                                                              "name":  "page",
+                                                                              "schema":  {
+                                                                                             "type":  "integer",
+                                                                                             "default":  1
+                                                                                         }
+                                                                          },
+                                                                          {
+                                                                              "in":  "query",
+                                                                              "name":  "limit",
+                                                                              "schema":  {
+                                                                                             "type":  "integer",
+                                                                                             "default":  20
+                                                                                         }
+                                                                          }
+                                                                      ],
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "User list with pagination"
+                                                                                 }
+                                                                     }
+                                                   },
+                                           "post":  {
+                                                        "tags":  [
+                                                                     "Admin"
+                                                                 ],
+                                                        "summary":  "Create a new user (useful for provisioning admins)",
+                                                        "security":  [
+                                                                         {
+                                                                             "bearerAuth":  [
+
+                                                                                            ]
+                                                                         }
+                                                                     ],
+                                                        "requestBody":  {
+                                                                            "required":  true,
+                                                                            "content":  {
+                                                                                            "application/json":  {
+                                                                                                                     "schema":  {
+                                                                                                                                    "type":  "object",
+                                                                                                                                    "required":  [
+                                                                                                                                                     "name",
+                                                                                                                                                     "email",
+                                                                                                                                                     "password"
+                                                                                                                                                 ],
+                                                                                                                                    "properties":  {
+                                                                                                                                                       "name":  {
+                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                },
+                                                                                                                                                       "email":  {
+                                                                                                                                                                     "type":  "string"
+                                                                                                                                                                 },
+                                                                                                                                                       "password":  {
+                                                                                                                                                                        "type":  "string"
+                                                                                                                                                                    },
+                                                                                                                                                       "role":  {
+                                                                                                                                                                    "type":  "string",
+                                                                                                                                                                    "enum":  [
+                                                                                                                                                                                 "seeker",
+                                                                                                                                                                                 "recruiter",
+                                                                                                                                                                                 "admin"
+                                                                                                                                                                             ]
+                                                                                                                                                                }
+                                                                                                                                                   }
+                                                                                                                                }
+                                                                                                                 }
+                                                                                        }
+                                                                        },
+                                                        "responses":  {
+                                                                          "201":  {
+                                                                                      "description":  "User created"
+                                                                                  }
+                                                                      }
+                                                    }
+                                       },
+                  "/api/admin/users/{id}":  {
+                                                "delete":  {
+                                                               "tags":  [
+                                                                            "Admin"
+                                                                        ],
+                                                               "summary":  "Delete a user account",
+                                                               "security":  [
+                                                                                {
+                                                                                    "bearerAuth":  [
+
+                                                                                                   ]
+                                                                                }
+                                                                            ],
+                                                               "parameters":  [
+                                                                                  {
+                                                                                      "in":  "path",
+                                                                                      "name":  "id",
+                                                                                      "required":  true,
+                                                                                      "schema":  {
+                                                                                                     "type":  "integer"
+                                                                                                 }
+                                                                                  }
+                                                                              ],
+                                                               "responses":  {
+                                                                                 "200":  {
+                                                                                             "description":  "User deleted"
+                                                                                         },
+                                                                                 "403":  {
+                                                                                             "description":  "Cannot delete admin"
+                                                                                         },
+                                                                                 "404":  {
+                                                                                             "description":  "User not found"
+                                                                                         }
+                                                                             }
+                                                           },
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "Admin"
+                                                                     ],
+                                                            "summary":  "View single user detail",
+                                                            "security":  [
+                                                                             {
+                                                                                 "bearerAuth":  [
+
+                                                                                                ]
+                                                                             }
+                                                                         ],
+                                                            "parameters":  [
+                                                                               {
+                                                                                   "in":  "path",
+                                                                                   "name":  "id",
+                                                                                   "required":  true,
+                                                                                   "schema":  {
+                                                                                                  "type":  "integer"
+                                                                                              }
+                                                                               }
+                                                                           ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "User details"
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/admin/stats":  {
+                                           "get":  {
+                                                       "tags":  [
+                                                                    "Admin"
+                                                                ],
+                                                       "summary":  "Platform-wide metrics (users, jobs, applications)",
+                                                       "security":  [
+                                                                        {
+                                                                            "bearerAuth":  [
+
+                                                                                           ]
+                                                                        }
+                                                                    ],
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Platform stats"
+                                                                                 }
+                                                                     }
+                                                   }
+                                       },
+                  "/api/admin/jobs":  {
+                                          "get":  {
+                                                      "tags":  [
+                                                                   "Admin"
+                                                               ],
+                                                      "summary":  "Get all jobs (open and closed)",
+                                                      "security":  [
+                                                                       {
+                                                                           "bearerAuth":  [
+
+                                                                                          ]
+                                                                       }
+                                                                   ],
+                                                      "parameters":  [
+                                                                         {
+                                                                             "in":  "query",
+                                                                             "name":  "status",
+                                                                             "schema":  {
+                                                                                            "type":  "string",
+                                                                                            "enum":  [
+                                                                                                         "open",
+                                                                                                         "closed"
+                                                                                                     ]
+                                                                                        }
+                                                                         }
+                                                                     ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "List of all jobs"
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
+                  "/api/admin/stats/jobs":  {
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "Admin"
+                                                                     ],
+                                                            "summary":  "Detailed job analytics",
+                                                            "security":  [
+                                                                             {
+                                                                                 "bearerAuth":  [
+
+                                                                                                ]
+                                                                             }
+                                                                         ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Job analytics"
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/admin/users/{id}/status":  {
+                                                       "patch":  {
+                                                                     "tags":  [
+                                                                                  "Admin"
+                                                                              ],
+                                                                     "summary":  "Suspend or activate a user account",
+                                                                     "security":  [
+                                                                                      {
+                                                                                          "bearerAuth":  [
+
+                                                                                                         ]
+                                                                                      }
+                                                                                  ],
+                                                                     "parameters":  [
+                                                                                        {
+                                                                                            "in":  "path",
+                                                                                            "name":  "id",
+                                                                                            "required":  true,
+                                                                                            "schema":  {
+                                                                                                           "type":  "integer"
+                                                                                                       }
+                                                                                        }
+                                                                                    ],
+                                                                     "requestBody":  {
+                                                                                         "required":  true,
+                                                                                         "content":  {
+                                                                                                         "application/json":  {
+                                                                                                                                  "schema":  {
+                                                                                                                                                 "type":  "object",
+                                                                                                                                                 "required":  [
+                                                                                                                                                                  "status"
+                                                                                                                                                              ],
+                                                                                                                                                 "properties":  {
+                                                                                                                                                                    "status":  {
+                                                                                                                                                                                   "type":  "string",
+                                                                                                                                                                                   "enum":  [
+                                                                                                                                                                                                "active",
+                                                                                                                                                                                                "suspended"
+                                                                                                                                                                                            ]
+                                                                                                                                                                               }
+                                                                                                                                                                }
+                                                                                                                                             }
+                                                                                                                              }
+                                                                                                     }
+                                                                                     },
+                                                                     "responses":  {
+                                                                                       "200":  {
+                                                                                                   "description":  "User status updated"
+                                                                                               }
+                                                                                   }
+                                                                 }
+                                                   },
+                  "/api/admin/jobs/{id}":  {
+                                               "delete":  {
+                                                              "tags":  [
+                                                                           "Admin"
+                                                                       ],
+                                                              "summary":  "Force-delete any job post",
+                                                              "security":  [
+                                                                               {
+                                                                                   "bearerAuth":  [
+
+                                                                                                  ]
+                                                                               }
+                                                                           ],
+                                                              "parameters":  [
+                                                                                 {
+                                                                                     "in":  "path",
+                                                                                     "name":  "id",
+                                                                                     "required":  true,
+                                                                                     "schema":  {
+                                                                                                    "type":  "integer"
+                                                                                                }
+                                                                                 }
+                                                                             ],
+                                                              "responses":  {
+                                                                                "200":  {
+                                                                                            "description":  "Job deleted"
+                                                                                        }
+                                                                            }
+                                                          }
+                                           },
+                  "/api/applications/my-applications":  {
+                                                            "get":  {
+                                                                        "tags":  [
+                                                                                     "Applications"
+                                                                                 ],
+                                                                        "summary":  "Get seeker\u0027s own application history",
+                                                                        "security":  [
+                                                                                         {
+                                                                                             "bearerAuth":  [
+
+                                                                                                            ]
+                                                                                         }
+                                                                                     ],
+                                                                        "responses":  {
+                                                                                          "200":  {
+                                                                                                      "description":  "List of applications with job details"
+                                                                                                  }
+                                                                                      }
+                                                                    }
+                                                        },
+                  "/api/applications/job/{jobId}":  {
+                                                        "get":  {
+                                                                    "tags":  [
+                                                                                 "Applications"
+                                                                             ],
+                                                                    "summary":  "Get all applicants for a specific job (Recruiter only)",
+                                                                    "security":  [
+                                                                                     {
+                                                                                         "bearerAuth":  [
+
+                                                                                                        ]
+                                                                                     }
+                                                                                 ],
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "in":  "path",
+                                                                                           "name":  "jobId",
+                                                                                           "required":  true,
+                                                                                           "schema":  {
+                                                                                                          "type":  "integer"
+                                                                                                      }
+                                                                                       }
+                                                                                   ],
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "description":  "Applicants list"
+                                                                                              },
+                                                                                      "403":  {
+                                                                                                  "description":  "Forbidden - Not your job"
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                    },
+                  "/api/applications/apply/{jobId}":  {
+                                                          "post":  {
+                                                                       "tags":  [
+                                                                                    "Applications"
+                                                                                ],
+                                                                       "summary":  "Apply to a job (with optional resume upload)",
+                                                                       "security":  [
+                                                                                        {
+                                                                                            "bearerAuth":  [
+
+                                                                                                           ]
+                                                                                        }
+                                                                                    ],
+                                                                       "parameters":  [
+                                                                                          {
+                                                                                              "in":  "path",
+                                                                                              "name":  "jobId",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "integer"
+                                                                                                         }
+                                                                                          }
+                                                                                      ],
+                                                                       "requestBody":  {
+                                                                                           "content":  {
+                                                                                                           "multipart/form-data":  {
+                                                                                                                                       "schema":  {
+                                                                                                                                                      "type":  "object",
+                                                                                                                                                      "properties":  {
+                                                                                                                                                                         "cover_letter":  {
+                                                                                                                                                                                              "type":  "string"
+                                                                                                                                                                                          },
+                                                                                                                                                                         "resume":  {
+                                                                                                                                                                                        "type":  "string",
+                                                                                                                                                                                        "format":  "binary"
+                                                                                                                                                                                    }
+                                                                                                                                                                     }
+                                                                                                                                                  }
+                                                                                                                                   }
+                                                                                                       }
+                                                                                       },
+                                                                       "responses":  {
+                                                                                         "201":  {
+                                                                                                     "description":  "Application submitted"
+                                                                                                 },
+                                                                                         "409":  {
+                                                                                                     "description":  "Already applied"
+                                                                                                 }
+                                                                                     }
+                                                                   }
+                                                      },
+                  "/api/applications/{id}":  {
+                                                 "get":  {
+                                                             "tags":  [
+                                                                          "Applications"
+                                                                      ],
+                                                             "summary":  "View specific application with seeker profile (Recruiter — Privacy Rule enforced)",
+                                                             "security":  [
+                                                                              {
+                                                                                  "bearerAuth":  [
+
+                                                                                                 ]
+                                                                              }
+                                                                          ],
+                                                             "parameters":  [
+                                                                                {
+                                                                                    "in":  "path",
+                                                                                    "name":  "id",
+                                                                                    "required":  true,
+                                                                                    "schema":  {
+                                                                                                   "type":  "integer"
+                                                                                               }
+                                                                                }
+                                                                            ],
+                                                             "responses":  {
+                                                                               "200":  {
+                                                                                           "description":  "Application detail with seeker info"
+                                                                                       },
+                                                                               "403":  {
+                                                                                           "description":  "Forbidden"
+                                                                                       }
+                                                                           }
+                                                         },
+                                                 "delete":  {
+                                                                "tags":  [
+                                                                             "Applications"
+                                                                         ],
+                                                                "summary":  "Seeker withdraws their application",
+                                                                "security":  [
+                                                                                 {
+                                                                                     "bearerAuth":  [
+
+                                                                                                    ]
+                                                                                 }
+                                                                             ],
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "in":  "path",
+                                                                                       "name":  "id",
+                                                                                       "required":  true,
+                                                                                       "schema":  {
+                                                                                                      "type":  "integer"
+                                                                                                  }
+                                                                                   }
+                                                                               ],
+                                                                "responses":  {
+                                                                                  "200":  {
+                                                                                              "description":  "Application withdrawn"
+                                                                                          },
+                                                                                  "400":  {
+                                                                                              "description":  "Can only withdraw applied status"
+                                                                                          },
+                                                                                  "403":  {
+                                                                                              "description":  "Forbidden - Not your application"
+                                                                                          }
+                                                                              }
+                                                            }
+                                             },
+                  "/api/applications/{id}/status":  {
+                                                        "put":  {
+                                                                    "tags":  [
+                                                                                 "Applications"
+                                                                             ],
+                                                                    "summary":  "Update application status and trigger notification + email (Recruiter only)",
+                                                                    "security":  [
+                                                                                     {
+                                                                                         "bearerAuth":  [
+
+                                                                                                        ]
+                                                                                     }
+                                                                                 ],
+                                                                    "parameters":  [
+                                                                                       {
+                                                                                           "in":  "path",
+                                                                                           "name":  "id",
+                                                                                           "required":  true,
+                                                                                           "schema":  {
+                                                                                                          "type":  "integer"
+                                                                                                      }
+                                                                                       }
+                                                                                   ],
+                                                                    "requestBody":  {
+                                                                                        "required":  true,
+                                                                                        "content":  {
+                                                                                                        "application/json":  {
+                                                                                                                                 "schema":  {
+                                                                                                                                                "type":  "object",
+                                                                                                                                                "required":  [
+                                                                                                                                                                 "status"
+                                                                                                                                                             ],
+                                                                                                                                                "properties":  {
+                                                                                                                                                                   "status":  {
+                                                                                                                                                                                  "type":  "string",
+                                                                                                                                                                                  "enum":  [
+                                                                                                                                                                                               "applied",
+                                                                                                                                                                                               "shortlisted",
+                                                                                                                                                                                               "rejected",
+                                                                                                                                                                                               "hired"
+                                                                                                                                                                                           ]
+                                                                                                                                                                              }
+                                                                                                                                                               }
+                                                                                                                                            }
+                                                                                                                             }
+                                                                                                    }
+                                                                                    },
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "description":  "Status updated, notification sent"
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                    },
+                  "/api/auth/register":  {
+                                             "post":  {
+                                                          "tags":  [
+                                                                       "Auth"
+                                                                   ],
+                                                          "summary":  "Register a new user",
+                                                          "requestBody":  {
+                                                                              "required":  true,
+                                                                              "content":  {
+                                                                                              "application/json":  {
+                                                                                                                       "schema":  {
+                                                                                                                                      "type":  "object",
+                                                                                                                                      "required":  [
+                                                                                                                                                       "name",
+                                                                                                                                                       "email",
+                                                                                                                                                       "password"
+                                                                                                                                                   ],
+                                                                                                                                      "properties":  {
+                                                                                                                                                         "name":  {
+                                                                                                                                                                      "type":  "string",
+                                                                                                                                                                      "example":  "John Doe"
+                                                                                                                                                                  },
+                                                                                                                                                         "email":  {
+                                                                                                                                                                       "type":  "string",
+                                                                                                                                                                       "example":  "john@example.com"
+                                                                                                                                                                   },
+                                                                                                                                                         "password":  {
+                                                                                                                                                                          "type":  "string",
+                                                                                                                                                                          "example":  "password123"
+                                                                                                                                                                      },
+                                                                                                                                                         "role":  {
+                                                                                                                                                                      "type":  "string",
+                                                                                                                                                                      "enum":  [
+                                                                                                                                                                                   "seeker",
+                                                                                                                                                                                   "recruiter"
+                                                                                                                                                                               ],
+                                                                                                                                                                      "example":  "seeker"
+                                                                                                                                                                  }
+                                                                                                                                                     }
+                                                                                                                                  }
+                                                                                                                   }
+                                                                                          }
+                                                                          },
+                                                          "responses":  {
+                                                                            "201":  {
+                                                                                        "description":  "Account created"
+                                                                                    },
+                                                                            "409":  {
+                                                                                        "description":  "Email already registered"
+                                                                                    },
+                                                                            "422":  {
+                                                                                        "description":  "Validation error"
+                                                                                    }
+                                                                        }
+                                                      }
+                                         },
+                  "/api/auth/me":  {
+                                       "get":  {
+                                                   "tags":  [
+                                                                "Auth"
+                                                            ],
+                                                   "summary":  "Get current authenticated user",
+                                                   "security":  [
+                                                                    {
+                                                                        "bearerAuth":  [
+
+                                                                                       ]
+                                                                    }
+                                                                ],
+                                                   "responses":  {
+                                                                     "200":  {
+                                                                                 "description":  "Current user profile"
+                                                                             },
+                                                                     "401":  {
+                                                                                 "description":  "Unauthorized"
+                                                                             }
+                                                                 }
+                                               }
+                                   },
+                  "/api/auth/login":  {
+                                          "post":  {
+                                                       "tags":  [
+                                                                    "Auth"
+                                                                ],
+                                                       "summary":  "Login and retrieve JWT",
+                                                       "requestBody":  {
+                                                                           "required":  true,
+                                                                           "content":  {
+                                                                                           "application/json":  {
+                                                                                                                    "schema":  {
+                                                                                                                                   "type":  "object",
+                                                                                                                                   "required":  [
+                                                                                                                                                    "email",
+                                                                                                                                                    "password"
+                                                                                                                                                ],
+                                                                                                                                   "properties":  {
+                                                                                                                                                      "email":  {
+                                                                                                                                                                    "type":  "string",
+                                                                                                                                                                    "example":  "john@example.com"
+                                                                                                                                                                },
+                                                                                                                                                      "password":  {
+                                                                                                                                                                       "type":  "string",
+                                                                                                                                                                       "example":  "password123"
+                                                                                                                                                                   }
+                                                                                                                                                  }
+                                                                                                                               }
+                                                                                                                }
+                                                                                       }
+                                                                       },
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Logged in"
+                                                                                 },
+                                                                         "401":  {
+                                                                                     "description":  "Invalid credentials"
+                                                                                 }
+                                                                     }
+                                                   }
+                                      },
+                  "/api/auth/forgot-password":  {
+                                                    "post":  {
+                                                                 "tags":  [
+                                                                              "Auth"
+                                                                          ],
+                                                                 "summary":  "Request a password reset link via email",
+                                                                 "requestBody":  {
+                                                                                     "required":  true,
+                                                                                     "content":  {
+                                                                                                     "application/json":  {
+                                                                                                                              "schema":  {
+                                                                                                                                             "type":  "object",
+                                                                                                                                             "required":  [
+                                                                                                                                                              "email"
+                                                                                                                                                          ],
+                                                                                                                                             "properties":  {
+                                                                                                                                                                "email":  {
+                                                                                                                                                                              "type":  "string",
+                                                                                                                                                                              "example":  "john@example.com"
+                                                                                                                                                                          }
+                                                                                                                                                            }
+                                                                                                                                         }
+                                                                                                                          }
+                                                                                                 }
+                                                                                 },
+                                                                 "responses":  {
+                                                                                   "200":  {
+                                                                                               "description":  "Reset link sent if email exists"
+                                                                                           }
+                                                                               }
+                                                             }
+                                                },
+                  "/api/auth/reset-password/{token}":  {
+                                                           "put":  {
+                                                                       "tags":  [
+                                                                                    "Auth"
+                                                                                ],
+                                                                       "summary":  "Reset password using token from email",
+                                                                       "parameters":  [
+                                                                                          {
+                                                                                              "in":  "path",
+                                                                                              "name":  "token",
+                                                                                              "required":  true,
+                                                                                              "schema":  {
+                                                                                                             "type":  "string"
+                                                                                                         }
+                                                                                          }
+                                                                                      ],
+                                                                       "requestBody":  {
+                                                                                           "required":  true,
+                                                                                           "content":  {
+                                                                                                           "application/json":  {
+                                                                                                                                    "schema":  {
+                                                                                                                                                   "type":  "object",
+                                                                                                                                                   "required":  [
+                                                                                                                                                                    "password"
+                                                                                                                                                                ],
+                                                                                                                                                   "properties":  {
+                                                                                                                                                                      "password":  {
+                                                                                                                                                                                       "type":  "string",
+                                                                                                                                                                                       "example":  "newpassword123"
+                                                                                                                                                                                   }
+                                                                                                                                                                  }
+                                                                                                                                               }
+                                                                                                                                }
+                                                                                                       }
+                                                                                       },
+                                                                       "responses":  {
+                                                                                         "200":  {
+                                                                                                     "description":  "Password reset"
+                                                                                                 },
+                                                                                         "400":  {
+                                                                                                     "description":  "Invalid or expired token"
+                                                                                                 }
+                                                                                     }
+                                                                   }
+                                                       },
+                  "/api/auth/update-password":  {
+                                                    "put":  {
+                                                                "tags":  [
+                                                                             "Auth"
+                                                                         ],
+                                                                "summary":  "Update password (authenticated)",
+                                                                "security":  [
+                                                                                 {
+                                                                                     "bearerAuth":  [
+
+                                                                                                    ]
+                                                                                 }
+                                                                             ],
+                                                                "requestBody":  {
+                                                                                    "required":  true,
+                                                                                    "content":  {
+                                                                                                    "application/json":  {
+                                                                                                                             "schema":  {
+                                                                                                                                            "type":  "object",
+                                                                                                                                            "required":  [
+                                                                                                                                                             "oldPassword",
+                                                                                                                                                             "newPassword"
+                                                                                                                                                         ],
+                                                                                                                                            "properties":  {
+                                                                                                                                                               "oldPassword":  {
+                                                                                                                                                                                   "type":  "string"
+                                                                                                                                                                               },
+                                                                                                                                                               "newPassword":  {
+                                                                                                                                                                                   "type":  "string"
+                                                                                                                                                                               }
+                                                                                                                                                           }
+                                                                                                                                        }
+                                                                                                                         }
+                                                                                                }
+                                                                                },
+                                                                "responses":  {
+                                                                                  "200":  {
+                                                                                              "description":  "Password updated"
+                                                                                          },
+                                                                                  "400":  {
+                                                                                              "description":  "Incorrect current password"
+                                                                                          }
+                                                                              }
+                                                            }
+                                                },
+                  "/api/companies/my-company":  {
+                                                    "get":  {
+                                                                "tags":  [
+                                                                             "Companies"
+                                                                         ],
+                                                                "summary":  "Get recruiter\u0027s company profile",
+                                                                "security":  [
+                                                                                 {
+                                                                                     "bearerAuth":  [
+
+                                                                                                    ]
+                                                                                 }
+                                                                             ],
+                                                                "responses":  {
+                                                                                  "200":  {
+                                                                                              "description":  "Company profile"
+                                                                                          },
+                                                                                  "404":  {
+                                                                                              "description":  "No company created yet"
+                                                                                          }
+                                                                              }
+                                                            }
+                                                },
+                  "/api/companies/stats":  {
+                                               "get":  {
+                                                           "tags":  [
+                                                                        "Companies"
+                                                                    ],
+                                                           "summary":  "Company statistics (total jobs, applications)",
+                                                           "security":  [
+                                                                            {
+                                                                                "bearerAuth":  [
+
+                                                                                               ]
+                                                                            }
+                                                                        ],
+                                                           "responses":  {
+                                                                             "200":  {
+                                                                                         "description":  "Company stats"
+                                                                                     }
+                                                                         }
+                                                       }
+                                           },
+                  "/api/companies":  {
+                                         "post":  {
+                                                      "tags":  [
+                                                                   "Companies"
+                                                               ],
+                                                      "summary":  "Create company profile",
+                                                      "security":  [
+                                                                       {
+                                                                           "bearerAuth":  [
+
+                                                                                          ]
+                                                                       }
+                                                                   ],
+                                                      "requestBody":  {
+                                                                          "required":  true,
+                                                                          "content":  {
+                                                                                          "application/json":  {
+                                                                                                                   "schema":  {
+                                                                                                                                  "type":  "object",
+                                                                                                                                  "required":  [
+                                                                                                                                                   "name"
+                                                                                                                                               ],
+                                                                                                                                  "properties":  {
+                                                                                                                                                     "name":  {
+                                                                                                                                                                  "type":  "string"
+                                                                                                                                                              },
+                                                                                                                                                     "website":  {
+                                                                                                                                                                     "type":  "string"
+                                                                                                                                                                 },
+                                                                                                                                                     "description":  {
+                                                                                                                                                                         "type":  "string"
+                                                                                                                                                                     }
+                                                                                                                                                 }
+                                                                                                                              }
+                                                                                                               }
+                                                                                      }
+                                                                      },
+                                                      "responses":  {
+                                                                        "201":  {
+                                                                                    "description":  "Company created"
+                                                                                },
+                                                                        "409":  {
+                                                                                    "description":  "Company already exists"
+                                                                                }
+                                                                    }
+                                                  },
+                                         "put":  {
+                                                     "tags":  [
+                                                                  "Companies"
+                                                              ],
+                                                     "summary":  "Update company (supports logo upload)",
+                                                     "security":  [
+                                                                      {
+                                                                          "bearerAuth":  [
+
+                                                                                         ]
+                                                                      }
+                                                                  ],
+                                                     "requestBody":  {
+                                                                         "content":  {
+                                                                                         "multipart/form-data":  {
+                                                                                                                     "schema":  {
+                                                                                                                                    "type":  "object",
+                                                                                                                                    "properties":  {
+                                                                                                                                                       "name":  {
+                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                },
+                                                                                                                                                       "website":  {
+                                                                                                                                                                       "type":  "string"
+                                                                                                                                                                   },
+                                                                                                                                                       "description":  {
+                                                                                                                                                                           "type":  "string"
+                                                                                                                                                                       },
+                                                                                                                                                       "logo":  {
+                                                                                                                                                                    "type":  "string",
+                                                                                                                                                                    "format":  "binary"
+                                                                                                                                                                }
+                                                                                                                                                   }
+                                                                                                                                }
+                                                                                                                 }
+                                                                                     }
+                                                                     },
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Company updated"
+                                                                               }
+                                                                   }
+                                                 },
+                                         "get":  {
+                                                     "tags":  [
+                                                                  "Companies"
+                                                              ],
+                                                     "summary":  "Get all companies",
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "List of companies"
+                                                                               }
+                                                                   }
+                                                 }
+                                     },
+                  "/api/companies/{id}":  {
+                                              "get":  {
+                                                          "tags":  [
+                                                                       "Companies"
+                                                                   ],
+                                                          "summary":  "Get company by ID with its open jobs",
+                                                          "parameters":  [
+                                                                             {
+                                                                                 "in":  "path",
+                                                                                 "name":  "id",
+                                                                                 "required":  true,
+                                                                                 "schema":  {
+                                                                                                "type":  "integer"
+                                                                                            }
+                                                                             }
+                                                                         ],
+                                                          "responses":  {
+                                                                            "200":  {
+                                                                                        "description":  "Company profile"
+                                                                                    }
+                                                                        }
+                                                      }
+                                          },
+                  "/api/jobs/latest":  {
+                                           "get":  {
+                                                       "tags":  [
+                                                                    "Jobs"
+                                                                ],
+                                                       "summary":  "Get 5 newest open jobs (for landing page)",
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Latest jobs"
+                                                                                 }
+                                                                     }
+                                                   }
+                                       },
+                  "/api/jobs/recommended":  {
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "Jobs"
+                                                                     ],
+                                                            "summary":  "Get skill-matched jobs ranked by percentage (Seeker only)",
+                                                            "security":  [
+                                                                             {
+                                                                                 "bearerAuth":  [
+
+                                                                                                ]
+                                                                             }
+                                                                         ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Recommended jobs with match_percentage"
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/jobs/my-postings":  {
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "Jobs"
+                                                                     ],
+                                                            "summary":  "All jobs posted by the logged-in recruiter",
+                                                            "security":  [
+                                                                             {
+                                                                                 "bearerAuth":  [
+
+                                                                                                ]
+                                                                             }
+                                                                         ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "Recruiter job list"
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/jobs":  {
+                                    "get":  {
+                                                "tags":  [
+                                                             "Jobs"
+                                                         ],
+                                                "summary":  "List open jobs with search, filters, and pagination",
+                                                "parameters":  [
+                                                                   {
+                                                                       "in":  "query",
+                                                                       "name":  "search",
+                                                                       "schema":  {
+                                                                                      "type":  "string"
+                                                                                  }
+                                                                   },
+                                                                   {
+                                                                       "in":  "query",
+                                                                       "name":  "job_type",
+                                                                       "schema":  {
+                                                                                      "type":  "string",
+                                                                                      "enum":  [
+                                                                                                   "Full-time",
+                                                                                                   "Part-time",
+                                                                                                   "Contract",
+                                                                                                   "Internship",
+                                                                                                   "Remote",
+                                                                                                   "Hybrid"
+                                                                                               ]
+                                                                                  }
+                                                                   },
+                                                                   {
+                                                                       "in":  "query",
+                                                                       "name":  "location",
+                                                                       "schema":  {
+                                                                                      "type":  "string"
+                                                                                  }
+                                                                   },
+                                                                   {
+                                                                       "in":  "query",
+                                                                       "name":  "page",
+                                                                       "schema":  {
+                                                                                      "type":  "integer",
+                                                                                      "default":  1
+                                                                                  }
+                                                                   },
+                                                                   {
+                                                                       "in":  "query",
+                                                                       "name":  "limit",
+                                                                       "schema":  {
+                                                                                      "type":  "integer",
+                                                                                      "default":  10
+                                                                                  }
+                                                                   }
+                                                               ],
+                                                "responses":  {
+                                                                  "200":  {
+                                                                              "description":  "Job list with pagination"
+                                                                          }
+                                                              }
+                                            },
+                                    "post":  {
+                                                 "tags":  [
+                                                              "Jobs"
+                                                          ],
+                                                 "summary":  "Post a new job (Recruiter only)",
+                                                 "security":  [
+                                                                  {
+                                                                      "bearerAuth":  [
+
+                                                                                     ]
+                                                                  }
+                                                              ],
+                                                 "requestBody":  {
+                                                                     "required":  true,
+                                                                     "content":  {
+                                                                                     "application/json":  {
+                                                                                                              "schema":  {
+                                                                                                                             "type":  "object",
+                                                                                                                             "required":  [
+                                                                                                                                              "title",
+                                                                                                                                              "description"
+                                                                                                                                          ],
+                                                                                                                             "properties":  {
+                                                                                                                                                "title":  {
+                                                                                                                                                              "type":  "string"
+                                                                                                                                                          },
+                                                                                                                                                "description":  {
+                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                },
+                                                                                                                                                "location":  {
+                                                                                                                                                                 "type":  "string"
+                                                                                                                                                             },
+                                                                                                                                                "job_type":  {
+                                                                                                                                                                 "type":  "string"
+                                                                                                                                                             },
+                                                                                                                                                "salary_range":  {
+                                                                                                                                                                     "type":  "string"
+                                                                                                                                                                 },
+                                                                                                                                                "skillIds":  {
+                                                                                                                                                                 "type":  "array",
+                                                                                                                                                                 "items":  {
+                                                                                                                                                                               "type":  "integer"
+                                                                                                                                                                           }
+                                                                                                                                                             }
+                                                                                                                                            }
+                                                                                                                         }
+                                                                                                          }
+                                                                                 }
+                                                                 },
+                                                 "responses":  {
+                                                                   "201":  {
+                                                                               "description":  "Job created"
+                                                                           }
+                                                               }
+                                             }
+                                },
+                  "/api/jobs/{id}":  {
+                                         "get":  {
+                                                     "tags":  [
+                                                                  "Jobs"
+                                                              ],
+                                                     "summary":  "Get full job details with company info",
+                                                     "parameters":  [
+                                                                        {
+                                                                            "in":  "path",
+                                                                            "name":  "id",
+                                                                            "required":  true,
+                                                                            "schema":  {
+                                                                                           "type":  "integer"
+                                                                                       }
+                                                                        }
+                                                                    ],
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Job details"
+                                                                               },
+                                                                       "404":  {
+                                                                                   "description":  "Not found"
+                                                                               }
+                                                                   }
+                                                 },
+                                         "put":  {
+                                                     "tags":  [
+                                                                  "Jobs"
+                                                              ],
+                                                     "summary":  "Edit own job post (Recruiter only)",
+                                                     "security":  [
+                                                                      {
+                                                                          "bearerAuth":  [
+
+                                                                                         ]
+                                                                      }
+                                                                  ],
+                                                     "parameters":  [
+                                                                        {
+                                                                            "in":  "path",
+                                                                            "name":  "id",
+                                                                            "required":  true,
+                                                                            "schema":  {
+                                                                                           "type":  "integer"
+                                                                                       }
+                                                                        }
+                                                                    ],
+                                                     "responses":  {
+                                                                       "200":  {
+                                                                                   "description":  "Job updated"
+                                                                               },
+                                                                       "403":  {
+                                                                                   "description":  "Forbidden"
+                                                                               }
+                                                                   }
+                                                 },
+                                         "delete":  {
+                                                        "tags":  [
+                                                                     "Jobs"
+                                                                 ],
+                                                        "summary":  "Delete own job post (Recruiter only)",
+                                                        "security":  [
+                                                                         {
+                                                                             "bearerAuth":  [
+
+                                                                                            ]
+                                                                         }
+                                                                     ],
+                                                        "parameters":  [
+                                                                           {
+                                                                               "in":  "path",
+                                                                               "name":  "id",
+                                                                               "required":  true,
+                                                                               "schema":  {
+                                                                                              "type":  "integer"
+                                                                                          }
+                                                                           }
+                                                                       ],
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "Job deleted"
+                                                                                  }
+                                                                      }
+                                                    }
+                                     },
+                  "/api/jobs/{id}/status":  {
+                                                "patch":  {
+                                                              "tags":  [
+                                                                           "Jobs"
+                                                                       ],
+                                                              "summary":  "Toggle job status open/closed (Recruiter only)",
+                                                              "security":  [
+                                                                               {
+                                                                                   "bearerAuth":  [
+
+                                                                                                  ]
+                                                                               }
+                                                                           ],
+                                                              "parameters":  [
+                                                                                 {
+                                                                                     "in":  "path",
+                                                                                     "name":  "id",
+                                                                                     "required":  true,
+                                                                                     "schema":  {
+                                                                                                    "type":  "integer"
+                                                                                                }
+                                                                                 }
+                                                                             ],
+                                                              "responses":  {
+                                                                                "200":  {
+                                                                                            "description":  "Status toggled"
+                                                                                        }
+                                                                            }
+                                                          }
+                                            },
+                  "/api/notifications":  {
+                                             "get":  {
+                                                         "tags":  [
+                                                                      "Notifications"
+                                                                  ],
+                                                         "summary":  "Get user-specific notifications (unread first)",
+                                                         "security":  [
+                                                                          {
+                                                                              "bearerAuth":  [
+
+                                                                                             ]
+                                                                          }
+                                                                      ],
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "Notifications list"
+                                                                                   }
+                                                                       }
+                                                     }
+                                         },
+                  "/api/notifications/{id}/read":  {
+                                                       "patch":  {
+                                                                     "tags":  [
+                                                                                  "Notifications"
+                                                                              ],
+                                                                     "summary":  "Mark a notification as read",
+                                                                     "security":  [
+                                                                                      {
+                                                                                          "bearerAuth":  [
+
+                                                                                                         ]
+                                                                                      }
+                                                                                  ],
+                                                                     "parameters":  [
+                                                                                        {
+                                                                                            "in":  "path",
+                                                                                            "name":  "id",
+                                                                                            "required":  true,
+                                                                                            "schema":  {
+                                                                                                           "type":  "integer"
+                                                                                                       }
+                                                                                        }
+                                                                                    ],
+                                                                     "responses":  {
+                                                                                       "200":  {
+                                                                                                   "description":  "Notification marked as read"
+                                                                                               },
+                                                                                       "404":  {
+                                                                                                   "description":  "Not found"
+                                                                                               }
+                                                                                   }
+                                                                 }
+                                                   },
+                  "/api/notifications/unread-count":  {
+                                                          "get":  {
+                                                                      "tags":  [
+                                                                                   "Notifications"
+                                                                               ],
+                                                                      "summary":  "Get count of unread notifications",
+                                                                      "security":  [
+                                                                                       {
+                                                                                           "bearerAuth":  [
+
+                                                                                                          ]
+                                                                                       }
+                                                                                   ],
+                                                                      "responses":  {
+                                                                                        "200":  {
+                                                                                                    "description":  "Unread count"
+                                                                                                }
+                                                                                    }
+                                                                  }
+                                                      },
+                  "/api/notifications/read-all":  {
+                                                      "patch":  {
+                                                                    "tags":  [
+                                                                                 "Notifications"
+                                                                             ],
+                                                                    "summary":  "Mark all notifications as read",
+                                                                    "security":  [
+                                                                                     {
+                                                                                         "bearerAuth":  [
+
+                                                                                                        ]
+                                                                                     }
+                                                                                 ],
+                                                                    "responses":  {
+                                                                                      "200":  {
+                                                                                                  "description":  "All marked as read"
+                                                                                              }
+                                                                                  }
+                                                                }
+                                                  },
+                  "/api/notifications/{id}":  {
+                                                  "delete":  {
+                                                                 "tags":  [
+                                                                              "Notifications"
+                                                                          ],
+                                                                 "summary":  "Delete a notification",
+                                                                 "security":  [
+                                                                                  {
+                                                                                      "bearerAuth":  [
+
+                                                                                                     ]
+                                                                                  }
+                                                                              ],
+                                                                 "parameters":  [
+                                                                                    {
+                                                                                        "in":  "path",
+                                                                                        "name":  "id",
+                                                                                        "required":  true,
+                                                                                        "schema":  {
+                                                                                                       "type":  "integer"
+                                                                                                   }
+                                                                                    }
+                                                                                ],
+                                                                 "responses":  {
+                                                                                   "200":  {
+                                                                                               "description":  "Notification deleted"
+                                                                                           }
+                                                                               }
+                                                             }
+                                              },
+                  "/api/skills":  {
+                                      "get":  {
+                                                  "tags":  [
+                                                               "Skills"
+                                                           ],
+                                                  "summary":  "Get all skills (public — for autocomplete)",
+                                                  "responses":  {
+                                                                    "200":  {
+                                                                                "description":  "Skills list"
+                                                                            }
+                                                                }
+                                              },
+                                      "post":  {
+                                                   "tags":  [
+                                                                "Skills"
+                                                            ],
+                                                   "summary":  "Add a new skill (Admin only)",
+                                                   "security":  [
+                                                                    {
+                                                                        "bearerAuth":  [
+
+                                                                                       ]
+                                                                    }
+                                                                ],
+                                                   "requestBody":  {
+                                                                       "required":  true,
+                                                                       "content":  {
+                                                                                       "application/json":  {
+                                                                                                                "schema":  {
+                                                                                                                               "type":  "object",
+                                                                                                                               "required":  [
+                                                                                                                                                "name"
+                                                                                                                                            ],
+                                                                                                                               "properties":  {
+                                                                                                                                                  "name":  {
+                                                                                                                                                               "type":  "string",
+                                                                                                                                                               "example":  "React.js"
+                                                                                                                                                           }
+                                                                                                                                              }
+                                                                                                                           }
+                                                                                                            }
+                                                                                   }
+                                                                   },
+                                                   "responses":  {
+                                                                     "201":  {
+                                                                                 "description":  "Skill created"
+                                                                             },
+                                                                     "409":  {
+                                                                                 "description":  "Skill already exists"
+                                                                             }
+                                                                 }
+                                               }
+                                  },
+                  "/api/skills/{id}":  {
+                                           "put":  {
+                                                       "tags":  [
+                                                                    "Skills"
+                                                                ],
+                                                       "summary":  "Update skill name (Admin only)",
+                                                       "security":  [
+                                                                        {
+                                                                            "bearerAuth":  [
+
+                                                                                           ]
+                                                                        }
+                                                                    ],
+                                                       "parameters":  [
+                                                                          {
+                                                                              "in":  "path",
+                                                                              "name":  "id",
+                                                                              "required":  true,
+                                                                              "schema":  {
+                                                                                             "type":  "integer"
+                                                                                         }
+                                                                          }
+                                                                      ],
+                                                       "requestBody":  {
+                                                                           "required":  true,
+                                                                           "content":  {
+                                                                                           "application/json":  {
+                                                                                                                    "schema":  {
+                                                                                                                                   "type":  "object",
+                                                                                                                                   "required":  [
+                                                                                                                                                    "name"
+                                                                                                                                                ],
+                                                                                                                                   "properties":  {
+                                                                                                                                                      "name":  {
+                                                                                                                                                                   "type":  "string"
+                                                                                                                                                               }
+                                                                                                                                                  }
+                                                                                                                               }
+                                                                                                                }
+                                                                                       }
+                                                                       },
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Skill updated"
+                                                                                 }
+                                                                     }
+                                                   },
+                                           "delete":  {
+                                                          "tags":  [
+                                                                       "Skills"
+                                                                   ],
+                                                          "summary":  "Delete a skill (Admin only)",
+                                                          "security":  [
+                                                                           {
+                                                                               "bearerAuth":  [
+
+                                                                                              ]
+                                                                           }
+                                                                       ],
+                                                          "parameters":  [
+                                                                             {
+                                                                                 "in":  "path",
+                                                                                 "name":  "id",
+                                                                                 "required":  true,
+                                                                                 "schema":  {
+                                                                                                "type":  "integer"
+                                                                                            }
+                                                                             }
+                                                                         ],
+                                                          "responses":  {
+                                                                            "200":  {
+                                                                                        "description":  "Skill deleted"
+                                                                                    }
+                                                                        }
+                                                      }
+                                       },
+                  "/api/users/profile":  {
+                                             "get":  {
+                                                         "tags":  [
+                                                                      "Users"
+                                                                  ],
+                                                         "summary":  "Get logged-in user profile with skills",
+                                                         "security":  [
+                                                                          {
+                                                                              "bearerAuth":  [
+
+                                                                                             ]
+                                                                          }
+                                                                      ],
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "User profile"
+                                                                                   }
+                                                                       }
+                                                     },
+                                             "put":  {
+                                                         "tags":  [
+                                                                      "Users"
+                                                                  ],
+                                                         "summary":  "Update bio and personal info",
+                                                         "security":  [
+                                                                          {
+                                                                              "bearerAuth":  [
+
+                                                                                             ]
+                                                                          }
+                                                                      ],
+                                                         "requestBody":  {
+                                                                             "content":  {
+                                                                                             "application/json":  {
+                                                                                                                      "schema":  {
+                                                                                                                                     "type":  "object",
+                                                                                                                                     "properties":  {
+                                                                                                                                                        "name":  {
+                                                                                                                                                                     "type":  "string"
+                                                                                                                                                                 },
+                                                                                                                                                        "bio":  {
+                                                                                                                                                                    "type":  "string"
+                                                                                                                                                                }
+                                                                                                                                                    }
+                                                                                                                                 }
+                                                                                                                  }
+                                                                                         }
+                                                                         },
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "Profile updated"
+                                                                                   }
+                                                                       }
+                                                     }
+                                         },
+                  "/api/users/skills":  {
+                                            "put":  {
+                                                        "tags":  [
+                                                                     "Users"
+                                                                 ],
+                                                        "summary":  "Sync seeker skills (full replace)",
+                                                        "security":  [
+                                                                         {
+                                                                             "bearerAuth":  [
+
+                                                                                            ]
+                                                                         }
+                                                                     ],
+                                                        "requestBody":  {
+                                                                            "required":  true,
+                                                                            "content":  {
+                                                                                            "application/json":  {
+                                                                                                                     "schema":  {
+                                                                                                                                    "type":  "object",
+                                                                                                                                    "properties":  {
+                                                                                                                                                       "skillIds":  {
+                                                                                                                                                                        "type":  "array",
+                                                                                                                                                                        "items":  {
+                                                                                                                                                                                      "type":  "integer"
+                                                                                                                                                                                  },
+                                                                                                                                                                        "example":  [
+                                                                                                                                                                                        1,
+                                                                                                                                                                                        3,
+                                                                                                                                                                                        5
+                                                                                                                                                                                    ]
+                                                                                                                                                                    }
+                                                                                                                                                   }
+                                                                                                                                }
+                                                                                                                 }
+                                                                                        }
+                                                                        },
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "Skills updated"
+                                                                                  }
+                                                                      }
+                                                    }
+                                        },
+                  "/api/users/resume":  {
+                                            "post":  {
+                                                         "tags":  [
+                                                                      "Users"
+                                                                  ],
+                                                         "summary":  "Upload or replace resume (PDF, max 5MB)",
+                                                         "security":  [
+                                                                          {
+                                                                              "bearerAuth":  [
+
+                                                                                             ]
+                                                                          }
+                                                                      ],
+                                                         "requestBody":  {
+                                                                             "content":  {
+                                                                                             "multipart/form-data":  {
+                                                                                                                         "schema":  {
+                                                                                                                                        "type":  "object",
+                                                                                                                                        "properties":  {
+                                                                                                                                                           "resume":  {
+                                                                                                                                                                          "type":  "string",
+                                                                                                                                                                          "format":  "binary"
+                                                                                                                                                                      }
+                                                                                                                                                       }
+                                                                                                                                    }
+                                                                                                                     }
+                                                                                         }
+                                                                         },
+                                                         "responses":  {
+                                                                           "200":  {
+                                                                                       "description":  "Resume uploaded"
+                                                                                   },
+                                                                           "400":  {
+                                                                                       "description":  "Invalid file type"
+                                                                                   }
+                                                                       }
+                                                     }
+                                        },
+                  "/api/users/profile-pic":  {
+                                                 "post":  {
+                                                              "tags":  [
+                                                                           "Users"
+                                                                       ],
+                                                              "summary":  "Upload profile picture (Max 2MB, Images only)",
+                                                              "security":  [
+                                                                               {
+                                                                                   "bearerAuth":  [
+
+                                                                                                  ]
+                                                                               }
+                                                                           ],
+                                                              "requestBody":  {
+                                                                                  "content":  {
+                                                                                                  "multipart/form-data":  {
+                                                                                                                              "schema":  {
+                                                                                                                                             "type":  "object",
+                                                                                                                                             "properties":  {
+                                                                                                                                                                "logo":  {
+                                                                                                                                                                             "type":  "string",
+                                                                                                                                                                             "format":  "binary"
+                                                                                                                                                                         }
+                                                                                                                                                            }
+                                                                                                                                         }
+                                                                                                                          }
+                                                                                              }
+                                                                              },
+                                                              "responses":  {
+                                                                                "200":  {
+                                                                                            "description":  "Profile picture uploaded"
+                                                                                        }
+                                                                            }
+                                                          }
+                                             },
+                  "/api/users/search":  {
+                                            "get":  {
+                                                        "tags":  [
+                                                                     "Users"
+                                                                 ],
+                                                        "summary":  "Recruiter searches candidate database",
+                                                        "security":  [
+                                                                         {
+                                                                             "bearerAuth":  [
+
+                                                                                            ]
+                                                                         }
+                                                                     ],
+                                                        "parameters":  [
+                                                                           {
+                                                                               "in":  "query",
+                                                                               "name":  "keyword",
+                                                                               "schema":  {
+                                                                                              "type":  "string"
+                                                                                          }
+                                                                           }
+                                                                       ],
+                                                        "responses":  {
+                                                                          "200":  {
+                                                                                      "description":  "List of candidate profiles"
+                                                                                  }
+                                                                      }
+                                                    }
+                                        },
+                  "/api/users/saved-jobs":  {
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "Users"
+                                                                     ],
+                                                            "summary":  "Get bookmarked jobs",
+                                                            "security":  [
+                                                                             {
+                                                                                 "bearerAuth":  [
+
+                                                                                                ]
+                                                                             }
+                                                                         ],
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "List of saved jobs"
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/users/save-job/{id}":  {
+                                                   "post":  {
+                                                                "tags":  [
+                                                                             "Users"
+                                                                         ],
+                                                                "summary":  "Toggle bookmark for a job",
+                                                                "security":  [
+                                                                                 {
+                                                                                     "bearerAuth":  [
+
+                                                                                                    ]
+                                                                                 }
+                                                                             ],
+                                                                "parameters":  [
+                                                                                   {
+                                                                                       "in":  "path",
+                                                                                       "name":  "id",
+                                                                                       "required":  true,
+                                                                                       "schema":  {
+                                                                                                      "type":  "integer"
+                                                                                                  }
+                                                                                   }
+                                                                               ],
+                                                                "responses":  {
+                                                                                  "200":  {
+                                                                                              "description":  "Job saved or removed"
+                                                                                          }
+                                                                              }
+                                                            }
+                                               },
+                  "/api/users/{id}":  {
+                                          "get":  {
+                                                      "tags":  [
+                                                                   "Users"
+                                                               ],
+                                                      "summary":  "Recruiter views a seeker\u0027s public profile (Privacy Guarded)",
+                                                      "security":  [
+                                                                       {
+                                                                           "bearerAuth":  [
+
+                                                                                          ]
+                                                                       }
+                                                                   ],
+                                                      "parameters":  [
+                                                                         {
+                                                                             "in":  "path",
+                                                                             "name":  "id",
+                                                                             "required":  true,
+                                                                             "schema":  {
+                                                                                            "type":  "integer"
+                                                                                        }
+                                                                         }
+                                                                     ],
+                                                      "responses":  {
+                                                                        "200":  {
+                                                                                    "description":  "Seeker profile"
+                                                                                },
+                                                                        "403":  {
+                                                                                    "description":  "Forbidden - Seeker has not applied to your jobs"
+                                                                                }
+                                                                    }
+                                                  }
+                                      },
+                  "/api/users/me":  {
+                                        "delete":  {
+                                                       "tags":  [
+                                                                    "Users"
+                                                                ],
+                                                       "summary":  "Delete own account (Admin cannot self-delete)",
+                                                       "security":  [
+                                                                        {
+                                                                            "bearerAuth":  [
+
+                                                                                           ]
+                                                                        }
+                                                                    ],
+                                                       "responses":  {
+                                                                         "200":  {
+                                                                                     "description":  "Account deleted"
+                                                                                 }
+                                                                     }
+                                                   }
+                                    }
+              }
+}

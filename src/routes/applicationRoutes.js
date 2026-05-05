@@ -137,7 +137,7 @@ router.delete('/:id', protect, authorize('seeker'), applicationController.withdr
  *             properties:
  *               status: { type: string, enum: [applied, shortlisted, rejected, hired] }
  *     responses:
- *       200: { description: Status updated, notification sent }
+ *       200: { description: "Status updated, notification sent" }
  */
 router.put('/:id/status', protect, authorize('recruiter'), updateStatusRules, validate, applicationController.updateApplicationStatus);
 
