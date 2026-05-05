@@ -81,9 +81,11 @@ exports.forgotPassword = async (req, res, next) => {
 
     await user.update({ reset_token: token, reset_token_expiry: expiry });
 
-    sendPasswordResetEmail({ to: user.email, name: user.name, resetToken: token }).catch((err) => {
-      console.error('[EMAIL ERROR] Failed to send password reset email:', err.message);
-    });
+    sendPasswordResetEmail({ to: user.email, name: user.name, resetToken: token })
+      .then(() => console.log(`[EMAIL OK] Password reset email sent to ${user.email}`))
+      .catch((err) => {
+        console.error('[EMAIL ERROR] Failed to send password reset email:', err.message);
+      });
 
     return res.status(200).json({ success: true, message: 'If that email exists, a reset link has been sent.' });
   } catch (err) {
