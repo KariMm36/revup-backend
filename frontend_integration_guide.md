@@ -202,3 +202,98 @@ The response will contain the relative path — prepend the base URL to display 
 5. **Job recommendations require skills** — `GET /api/jobs/recommended` returns ranked results based on seeker skills. If the seeker has no skills set, prompt them to add skills via `PUT /api/users/skills`.
 
 6. **Token expiry** — When any request returns `401 Unauthorized`, clear the stored token and redirect to login.
+
+---
+
+## 7. OAuth Login (Google & GitHub)
+
+### New Auth Endpoints
+
+| Method | Path | Protected | Notes |
+|--------|------|-----------|-------|
+| GET | `/api/auth/google` | No | Opens Google consent screen — use as an `<a href>` or `window.location.href`, NOT fetch |
+| GET | `/api/auth/google/callback` | No | Google redirects here — handled by backend |
+| GET | `/api/auth/github` | No | Opens GitHub consent screen — same rule as above |
+| GET | `/api/auth/github/callback` | No | GitHub redirects here — handled by backend |
+| POST | `/api/auth/complete-profile` | Yes (pending JWT) | Called ONCE for new OAuth users to set their role |
+
+---
+
+### OAuth Login Flow (Step by Step)
+
+#### Step 1 — User clicks "Login with Google/GitHub"
+```js
+// In your login page component:
+window.location.href = 'https://your-api.railway.app/api/auth/google';
+// or:
+window.location.href = 'https://your-api.railway.app/api/auth/github';
+```
+
+#### Step 2 — Backend redirects to your `/oauth-callback` page
+After the user consents, the backend redirects to:
+```
+https://your-frontend.com/oauth-callback?token=<JWT>&newUser=true|false
+```
+
+#### Step 3 — Your `/oauth-callback` page reads the URL params
+```js
+// pages/OAuthCallback.jsx (or equivalent)
+const params = new URLSearchParams(window.location.search);
+const token = params.get('token');
+const isNewUser = params.get('newUser') === 'true';
+const error = params.get('error');
+
+if (error === 'suspended') {
+  // Show: "Your account has been suspended."
+  return;
+}
+
+if (error === 'oauth_failed') {
+  // Show: "Login failed. Please try again."
+  return;
+}
+
+// Always store the token — it's valid even for pending users
+localStorage.setItem('token', token);
+
+if (isNewUser) {
+  // Redirect to role selection screen
+  navigate('/choose-role');
+} else {
+  // Existing user — go to dashboard
+  navigate('/dashboard');
+}
+```
+
+#### Step 4 — Role selection (new OAuth users only)
+On your `/choose-role` page, show two buttons: **"I'm looking for a job"** and **"I'm hiring"**.
+
+When the user picks:
+```js
+// POST /api/auth/complete-profile
+const response = await fetch('/api/auth/complete-profile', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+  },
+  body: JSON.stringify({ role: 'seeker' }), // or 'recruiter'
+});
+
+const data = await response.json();
+// data.token is a FRESH JWT with the real role — replace the old one!
+localStorage.setItem('token', data.token);
+navigate('/dashboard');
+```
+
+> **Important:** Replace the token after `complete-profile`. The initial token has `role: "pending"` which will be blocked by role guards.
+
+---
+
+### Key Rules for OAuth
+
+1. **Do NOT use fetch/axios** for the `/google` and `/github` initiation URLs — they must be full browser redirects (`window.location.href` or an `<a>` tag).
+2. **Always replace the token** after `POST /complete-profile` — the fresh token has the chosen role embedded.
+3. **Role guard** — Any route protected by `authorize('seeker')` will reject users with `role: 'pending'`. Always complete the profile step first.
+4. **Existing email match** — If a user already has an account with the same email, OAuth will link to that account automatically (no duplicate user).
+

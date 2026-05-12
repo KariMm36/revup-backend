@@ -141,3 +141,69 @@ exports.getMe = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─── OAuth Callback (used by both Google & GitHub) ────────────────────────────
+// Called by passport after successful provider auth.
+// Issues a short-lived JWT and redirects to the frontend.
+exports.oauthCallback = (req, res) => {
+  const user = req.user; // set by passport
+
+  if (user.status === 'suspended') {
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/oauth-callback?error=suspended`
+    );
+  }
+
+  const token = generateToken(user);
+  const isNew = user.role === 'pending'; // brand-new OAuth user needs role selection
+
+  // Redirect to frontend with token (and flag if role selection is needed)
+  return res.redirect(
+    `${process.env.FRONTEND_URL}/oauth-callback?token=${token}&newUser=${isNew}`
+  );
+};
+
+// POST /api/auth/complete-profile
+// Called ONCE by a new OAuth user to choose their role (seeker or recruiter).
+// Requires a valid JWT (the one issued in oauthCallback).
+exports.completeProfile = async (req, res, next) => {
+  try {
+    const { role } = req.body;
+
+    if (!['seeker', 'recruiter'].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Role must be either "seeker" or "recruiter".',
+      });
+    }
+
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (user.role !== 'pending') {
+      return res.status(400).json({
+        success: false,
+        message: 'Profile already completed. Role cannot be changed here.',
+      });
+    }
+
+    await user.update({ role });
+
+    // Issue a fresh token with the real role embedded
+    const token = generateToken(user);
+
+    sendWelcomeEmail({ to: user.email, name: user.name }).catch(console.error);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile completed. Welcome to RevUp!',
+      token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -18,14 +18,17 @@ const applicationRoutes = require('./routes/applicationRoutes');
 const skillRoutes = require('./routes/skillRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const courseRoutes = require('./routes/courseRoutes');
 const seedRoutes = require('./routes/seedRoutes');
 const errorHandler = require('./middlewares/errorHandler');
+const passport = require('./config/passport'); // registers OAuth strategies
 
 const app = express();
 
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
 app.use(cors());
+app.use(passport.initialize()); // OAuth — no sessions needed (JWT-based)
 
 // ─── Body Parsers ────────────────────────────────────────────────────────────
 app.use(express.json());
@@ -54,6 +57,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/courses', courseRoutes);
 // Seed route disabled after initial DB population
 // app.use('/api/seed', seedRoutes);
 

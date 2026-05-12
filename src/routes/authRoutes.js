@@ -2,6 +2,7 @@
 
 const express = require('express');
 const router = express.Router();
+const passport = require('passport');
 
 const authController = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
@@ -149,4 +150,89 @@ router.put('/reset-password/:token', resetPasswordRules, validate, authControlle
  */
 router.put('/update-password', protect, updatePasswordRules, validate, authController.updatePassword);
 
+// ─── OAuth Routes ─────────────────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/auth/google:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Initiate Google OAuth login
+ *     description: Redirects the user to Google's consent screen. Open this URL directly in the browser — not via fetch/axios.
+ *     responses:
+ *       302: { description: Redirect to Google }
+ */
+router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'], session: false }));
+
+/**
+ * @openapi
+ * /api/auth/google/callback:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Google OAuth callback
+ *     description: Google redirects here after user consents. Redirects to FRONTEND_URL/oauth-callback?token=...&newUser=true|false
+ *     responses:
+ *       302: { description: Redirect to frontend with token }
+ */
+router.get(
+  '/google/callback',
+  passport.authenticate('google', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
+  authController.oauthCallback
+);
+
+/**
+ * @openapi
+ * /api/auth/github:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Initiate GitHub OAuth login
+ *     description: Redirects the user to GitHub's consent screen. Open this URL directly in the browser — not via fetch/axios.
+ *     responses:
+ *       302: { description: Redirect to GitHub }
+ */
+router.get('/github', passport.authenticate('github', { scope: ['user:email'], session: false }));
+
+/**
+ * @openapi
+ * /api/auth/github/callback:
+ *   get:
+ *     tags: [Auth]
+ *     summary: GitHub OAuth callback
+ *     description: GitHub redirects here after user consents. Redirects to FRONTEND_URL/oauth-callback?token=...&newUser=true|false
+ *     responses:
+ *       302: { description: Redirect to frontend with token }
+ */
+router.get(
+  '/github/callback',
+  passport.authenticate('github', { session: false, failureRedirect: `${process.env.FRONTEND_URL}/login?error=oauth_failed` }),
+  authController.oauthCallback
+);
+
+/**
+ * @openapi
+ * /api/auth/complete-profile:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Set role for new OAuth user (called once after OAuth signup)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [role]
+ *             properties:
+ *               role:
+ *                 type: string
+ *                 enum: [seeker, recruiter]
+ *                 example: seeker
+ *     responses:
+ *       200: { description: Role set, fresh JWT returned }
+ *       400: { description: Invalid role or profile already completed }
+ */
+router.post('/complete-profile', protect, authController.completeProfile);
+
 module.exports = router;
+

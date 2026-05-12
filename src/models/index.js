@@ -11,6 +11,12 @@ const UserSkill       = require('./UserSkill');
 const JobSkill        = require('./JobSkill');
 const SavedJob        = require('./SavedJob');
 
+// ─── Phase 3 — Courses Models ─────────────────────────────────────────────────
+const Course          = require('./Course');
+const Lesson          = require('./Lesson');
+const Enrollment      = require('./Enrollment');
+const LessonProgress  = require('./LessonProgress');
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -50,6 +56,30 @@ User.belongsToMany(Job, { through: SavedJob, foreignKey: 'user_id', otherKey: 'j
 Job.belongsToMany(User, { through: SavedJob, foreignKey: 'job_id', otherKey: 'user_id', as: 'savedByUsers' });
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ASSOCIATIONS — Phase 3 (Courses)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── Admin (User) <-> Course ─────────────────────────────────────────────────
+User.hasMany(Course, { foreignKey: 'admin_id', as: 'createdCourses', onDelete: 'CASCADE' });
+Course.belongsTo(User, { foreignKey: 'admin_id', as: 'admin' });
+
+// ─── Course <-> Lesson ────────────────────────────────────────────────────────
+Course.hasMany(Lesson, { foreignKey: 'course_id', as: 'lessons', onDelete: 'CASCADE' });
+Lesson.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
+
+// ─── User <-> Course (M:N via Enrollments) ───────────────────────────────────
+User.belongsToMany(Course, { through: Enrollment, foreignKey: 'user_id', otherKey: 'course_id', as: 'enrolledCourses' });
+Course.belongsToMany(User, { through: Enrollment, foreignKey: 'course_id', otherKey: 'user_id', as: 'enrolledUsers' });
+Course.hasMany(Enrollment, { foreignKey: 'course_id', as: 'enrollments', onDelete: 'CASCADE' });
+Enrollment.belongsTo(Course, { foreignKey: 'course_id', as: 'course' });
+Enrollment.belongsTo(User,   { foreignKey: 'user_id',   as: 'user' });
+
+// ─── User <-> Lesson (M:N via LessonProgress) ────────────────────────────────
+Lesson.hasMany(LessonProgress, { foreignKey: 'lesson_id', as: 'progress', onDelete: 'CASCADE' });
+LessonProgress.belongsTo(Lesson, { foreignKey: 'lesson_id', as: 'lesson' });
+LessonProgress.belongsTo(User,   { foreignKey: 'user_id',   as: 'user' });
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // EXPORTS
@@ -64,4 +94,9 @@ module.exports = {
   UserSkill,
   JobSkill,
   SavedJob,
+  // Phase 3
+  Course,
+  Lesson,
+  Enrollment,
+  LessonProgress,
 };

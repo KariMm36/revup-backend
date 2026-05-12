@@ -1,6 +1,6 @@
 'use strict';
 
-const { User, Job, Application } = require('../models');
+const { User, Job, Application, Company } = require('../models');
 
 // GET /api/admin/users
 exports.getAllUsers = async (req, res, next) => {
@@ -55,7 +55,7 @@ exports.createUser = async (req, res, next) => {
     const existingUser = await User.findOne({ where: { email } });
     if (existingUser) return res.status(409).json({ success: false, message: 'Email already in use.' });
 
-    const bcrypt = require('bcrypt');
+    const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(password, 12);
 
     const user = await User.create({
