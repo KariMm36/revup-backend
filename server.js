@@ -12,8 +12,8 @@ const start = async () => {
     await sequelize.authenticate();
     console.log('  MySQL connected successfully.');
 
-    // Sync all models (creates tables if they don't exist, non-destructive)
-    await sequelize.sync({ alter: false });
+    // Sync all models (creates tables if they don't exist, updates columns)
+    await sequelize.sync({ alter: true });
     console.log('  Database synced.');
 
     app.listen(PORT, () => {
