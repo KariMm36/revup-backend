@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 const sequelize = require('../config/db');
 const { Job, Company, Skill, Application, User } = require('../models');
+const aiService = require('../services/aiService');
 
 // ── Helper: check if recruiter has access to a company ───────────────────────
 const recruiterBelongsToCompany = (user, company) => {
@@ -62,27 +63,28 @@ exports.getLatestJobs = async (req, res, next) => {
   }
 };
 
-// GET /api/jobs/recommended — skill-based matching (Seeker only)
+// GET /api/jobs/recommended — AI-based job matching (Seeker only)
 exports.getRecommendedJobs = async (req, res, next) => {
   try {
-    const [results] = await sequelize.query(
-      `SELECT j.*, c.name AS company_name, c.logo AS company_logo,
-         COUNT(js.skill_id) AS matched_skills,
-         ROUND((COUNT(js.skill_id) * 100.0) / (
-           SELECT COUNT(*) FROM job_skills WHERE job_id = j.id
-         ), 0) AS match_percentage
-       FROM jobs j
-       JOIN companies c ON j.company_id = c.id
-       JOIN job_skills js ON j.id = js.job_id
-       JOIN user_skills us ON js.skill_id = us.skill_id AND us.user_id = :seekerId
-       WHERE j.status = 'open'
-       GROUP BY j.id, c.name, c.logo
-       ORDER BY match_percentage DESC
-       LIMIT 20`,
-      { replacements: { seekerId: req.user.id } }
-    );
+    const seekerId = req.user.id;
 
-    return res.status(200).json({ success: true, data: results });
+    // 1. Fetch user data to build cv_text
+    const user = await User.findByPk(seekerId, {
+      include: [{ model: Skill, as: 'skills', through: { attributes: [] } }]
+    });
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const skillNames = user.skills ? user.skills.map(s => s.name).join(', ') : '';
+    const cvText = `Bio: ${user.bio || 'None'}. Skills: ${skillNames}`;
+
+    // 2. Call the AI service
+    const recommendations = await aiService.getJobRecommendations(seekerId, cvText);
+
+    // The AI returns { job: {...}, score: ... } array directly
+    return res.status(200).json({ success: true, data: recommendations });
   } catch (err) {
     next(err);
   }
