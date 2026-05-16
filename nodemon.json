@@ -1,0 +1,15 @@
+{
+  "watch": ["src", "server.js"],
+  "ext": "js,json",
+  "ignore": [
+    ".env",
+    ".env.*",
+    "*.env",
+    "migrate_*.js",
+    "seed.js",
+    "uploads/",
+    "node_modules/"
+  ],
+  "delay": 300
+}
+ 

@@ -111,4 +111,60 @@ router.get('/', companyController.getAllCompanies);
  */
 router.get('/:id', companyController.getCompanyById);
 
+/**
+ * @openapi
+ * /api/companies/recruiters:
+ *   get:
+ *     tags: [Companies]
+ *     summary: List all recruiters in the requester's company
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: List of recruiters }
+ */
+router.get('/recruiters', protect, authorize('recruiter'), companyController.getCompanyRecruiters);
+
+/**
+ * @openapi
+ * /api/companies/assign-recruiter:
+ *   post:
+ *     tags: [Companies]
+ *     summary: Company owner assigns a recruiter to their company by email
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email: { type: string }
+ *     responses:
+ *       200: { description: Recruiter assigned }
+ *       404: { description: Recruiter not found }
+ *       409: { description: Already assigned }
+ */
+router.post('/assign-recruiter', protect, authorize('recruiter'), companyController.assignRecruiter);
+
+/**
+ * @openapi
+ * /api/companies/remove-recruiter/{recruiterId}:
+ *   delete:
+ *     tags: [Companies]
+ *     summary: Company owner removes a recruiter from their company
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: recruiterId
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Recruiter removed }
+ *       403: { description: Not the company owner }
+ */
+router.delete('/remove-recruiter/:recruiterId', protect, authorize('recruiter'), companyController.removeRecruiter);
+
 module.exports = router;

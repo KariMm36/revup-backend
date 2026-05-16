@@ -4,6 +4,20 @@ const { Op } = require('sequelize');
 const sequelize = require('../config/db');
 const { Job, Company, Skill, Application, User } = require('../models');
 
+// ── Helper: check if recruiter has access to a company ───────────────────────
+const recruiterBelongsToCompany = (user, company) => {
+  return company.recruiter_id === user.id || user.company_id === company.id;
+};
+
+// ── Helper: get company for recruiter (owner OR assigned) ────────────────────
+const getRecruiterCompany = async (userId) => {
+  const owned = await Company.findOne({ where: { recruiter_id: userId } });
+  if (owned) return owned;
+  const user = await User.findByPk(userId, { attributes: ['id', 'company_id'] });
+  if (user && user.company_id) return await Company.findByPk(user.company_id);
+  return null;
+};
+
 // GET /api/jobs  — paginated list with search & filters
 exports.getAllJobs = async (req, res, next) => {
   try {
@@ -74,11 +88,11 @@ exports.getRecommendedJobs = async (req, res, next) => {
   }
 };
 
-// GET /api/jobs/my-postings — recruiter's own jobs
+// GET /api/jobs/my-postings — recruiter's own jobs (works for owner + assigned)
 exports.getMyPostings = async (req, res, next) => {
   try {
-    const company = await Company.findOne({ where: { recruiter_id: req.user.id } });
-    if (!company) return res.status(404).json({ success: false, message: 'Create a company profile first.' });
+    const company = await getRecruiterCompany(req.user.id);
+    if (!company) return res.status(404).json({ success: false, message: 'You are not associated with any company.' });
 
     const jobs = await Job.findAll({
       where: { company_id: company.id },
@@ -110,8 +124,8 @@ exports.getJobById = async (req, res, next) => {
 // POST /api/jobs — recruiter creates a job
 exports.createJob = async (req, res, next) => {
   try {
-    const company = await Company.findOne({ where: { recruiter_id: req.user.id } });
-    if (!company) return res.status(400).json({ success: false, message: 'Create a company profile before posting jobs.' });
+    const company = await getRecruiterCompany(req.user.id);
+    if (!company) return res.status(400).json({ success: false, message: 'You must be associated with a company before posting jobs.' });
 
     const { title, description, location, job_type, salary_range, skillIds } = req.body;
     const job = await Job.create({ title, description, location, job_type, salary_range, company_id: company.id });
@@ -134,7 +148,9 @@ exports.updateJob = async (req, res, next) => {
       include: [{ model: Company, as: 'company' }],
     });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
-    if (job.company.recruiter_id !== req.user.id) return res.status(403).json({ success: false, message: 'Forbidden.' });
+    if (!recruiterBelongsToCompany(req.user, job.company)) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
 
     const { title, description, location, job_type, salary_range, skillIds } = req.body;
     await job.update({ title, description, location, job_type, salary_range });
@@ -153,7 +169,9 @@ exports.deleteJob = async (req, res, next) => {
       include: [{ model: Company, as: 'company' }],
     });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
-    if (job.company.recruiter_id !== req.user.id) return res.status(403).json({ success: false, message: 'Forbidden.' });
+    if (!recruiterBelongsToCompany(req.user, job.company)) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
 
     await job.destroy();
     return res.status(200).json({ success: true, message: 'Job deleted.' });
@@ -169,7 +187,9 @@ exports.toggleJobStatus = async (req, res, next) => {
       include: [{ model: Company, as: 'company' }],
     });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
-    if (job.company.recruiter_id !== req.user.id) return res.status(403).json({ success: false, message: 'Forbidden.' });
+    if (!recruiterBelongsToCompany(req.user, job.company)) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
 
     const newStatus = job.status === 'open' ? 'closed' : 'open';
     await job.update({ status: newStatus });

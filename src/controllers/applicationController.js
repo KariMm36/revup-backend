@@ -3,6 +3,11 @@
 const { Application, Job, Company, User, Notification } = require('../models');
 const { sendApplicationStatusEmail } = require('../services/emailService');
 
+// ── Helper: check if recruiter has access to a company ───────────────────────
+const recruiterBelongsToCompany = (user, company) => {
+  return company.recruiter_id === user.id || user.company_id === company.id;
+};
+
 // POST /api/applications/apply/:jobId
 exports.applyToJob = async (req, res, next) => {
   try {
@@ -56,7 +61,9 @@ exports.getJobApplications = async (req, res, next) => {
     // Ownership guard
     const job = await Job.findByPk(jobId, { include: [{ model: Company, as: 'company' }] });
     if (!job) return res.status(404).json({ success: false, message: 'Job not found.' });
-    if (job.company.recruiter_id !== req.user.id) return res.status(403).json({ success: false, message: 'Forbidden.' });
+    if (!recruiterBelongsToCompany(req.user, job.company)) {
+      return res.status(403).json({ success: false, message: 'Forbidden.' });
+    }
 
     const applications = await Application.findAll({
       where: { job_id: jobId },
@@ -86,7 +93,7 @@ exports.getApplicationById = async (req, res, next) => {
         return res.status(403).json({ success: false, message: 'You can only view your own applications.' });
       }
     } else if (req.user.role === 'recruiter') {
-      if (application.job.company.recruiter_id !== req.user.id) {
+      if (!recruiterBelongsToCompany(req.user, application.job.company)) {
         return res.status(403).json({ success: false, message: 'You do not have permission to view this application.' });
       }
     }
@@ -111,7 +118,7 @@ exports.updateApplicationStatus = async (req, res, next) => {
     if (!application) return res.status(404).json({ success: false, message: 'Application not found.' });
 
     // Ownership guard
-    if (application.job.company.recruiter_id !== req.user.id) {
+    if (!recruiterBelongsToCompany(req.user, application.job.company)) {
       return res.status(403).json({ success: false, message: 'Forbidden.' });
     }
 

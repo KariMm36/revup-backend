@@ -47,6 +47,40 @@ router.put('/profile',  protect, authorize('seeker', 'recruiter'), updateProfile
 
 /**
  * @openapi
+ * /api/users/stats:
+ *   get:
+ *     tags: [Users]
+ *     summary: Seeker dashboard stats — application counts by status + saved jobs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Seeker stats
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     total_applications: { type: integer }
+ *                     by_status:
+ *                       type: object
+ *                       properties:
+ *                         applied:     { type: integer }
+ *                         shortlisted: { type: integer }
+ *                         rejected:    { type: integer }
+ *                         hired:       { type: integer }
+ *                     saved_jobs: { type: integer }
+ *                     recent_applications:
+ *                       type: array
+ */
+router.get('/stats', protect, authorize('seeker'), userController.getSeekerStats);
+
+/**
+ * @openapi
  * /api/users/skills:
  *   put:
  *     tags: [Users]

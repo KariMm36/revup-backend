@@ -10,18 +10,14 @@ const PORT = process.env.PORT || 5000;
 const start = async () => {
   try {
     await sequelize.authenticate();
-    console.log('  MySQL connected successfully.');
-
-    // Sync all models (creates tables if they don't exist, updates columns)
-    await sequelize.sync({ alter: true });
-    console.log('  Database synced.');
 
     app.listen(PORT, () => {
-      console.log(`  RevUp API running on http://localhost:${PORT}`);
-      console.log(`  Swagger docs at  http://localhost:${PORT}/api-docs`);
+      console.log('\n    RevUp API is live');
+      console.log(`    http://localhost:${PORT}`);
+      console.log(`    http://localhost:${PORT}/api-docs\n`);
     });
   } catch (err) {
-    console.error('  Failed to start server:', err.message || err);
+    console.error('    Failed to start server:', err.message || err);
     process.exit(1);
   }
 };

@@ -63,6 +63,14 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 'active',
   },
+  // ── Multi-recruiter support ──────────────────────────────────────────────────
+  // A recruiter is assigned to a company by the company owner.
+  // Null for seekers and admins.
+  company_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null,
+  },
 }, {
   tableName: 'users',
   timestamps: true,

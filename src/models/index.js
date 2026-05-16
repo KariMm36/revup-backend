@@ -23,9 +23,15 @@ const LessonProgress  = require('./LessonProgress');
 // ASSOCIATIONS — Phase 1 & 2
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// ─── User <-> Company ────────────────────────────────────────────────────────
-User.hasOne(Company, { foreignKey: 'recruiter_id', as: 'company', onDelete: 'CASCADE' });
-Company.belongsTo(User, { foreignKey: 'recruiter_id', as: 'recruiter' });
+// ─── User <-> Company (Owner) ─────────────────────────────────────────────────
+// The recruiter_id on Company is the OWNER who created the company.
+User.hasOne(Company, { foreignKey: 'recruiter_id', as: 'ownedCompany', onDelete: 'CASCADE' });
+Company.belongsTo(User, { foreignKey: 'recruiter_id', as: 'owner' });
+
+// ─── Company <-> User (Assigned Recruiters) ───────────────────────────────────
+// A Company can have many Recruiters assigned via users.company_id
+Company.hasMany(User, { foreignKey: 'company_id', as: 'recruiters' });
+User.belongsTo(Company, { foreignKey: 'company_id', as: 'assignedCompany' });
 
 // ─── Company <-> Job ─────────────────────────────────────────────────────────
 Company.hasMany(Job, { foreignKey: 'company_id', as: 'jobs', onDelete: 'CASCADE' });
