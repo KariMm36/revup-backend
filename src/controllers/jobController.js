@@ -32,7 +32,10 @@ exports.getAllJobs = async (req, res, next) => {
 
     const { count, rows } = await Job.findAndCountAll({
       where,
-      include: [{ model: Company, as: 'company', attributes: ['id', 'name', 'logo'] }],
+      include: [
+        { model: Company, as: 'company', attributes: ['id', 'name', 'logo'] },
+        { model: Skill,   as: 'skills',  through: { attributes: [] } },
+      ],
       limit: parseInt(limit),
       offset,
       order: [['createdAt', 'DESC']],
@@ -53,7 +56,10 @@ exports.getLatestJobs = async (req, res, next) => {
   try {
     const jobs = await Job.findAll({
       where: { status: 'open' },
-      include: [{ model: Company, as: 'company', attributes: ['id', 'name', 'logo'] }],
+      include: [
+        { model: Company, as: 'company', attributes: ['id', 'name', 'logo'] },
+        { model: Skill,   as: 'skills',  through: { attributes: [] } },
+      ],
       order: [['createdAt', 'DESC']],
       limit: 5,
     });
@@ -68,23 +74,46 @@ exports.getRecommendedJobs = async (req, res, next) => {
   try {
     const seekerId = req.user.id;
 
-    // 1. Fetch user data to build cv_text
+    // 1. Fetch the seeker's profile to build a cv_text for the AI
     const user = await User.findByPk(seekerId, {
-      include: [{ model: Skill, as: 'skills', through: { attributes: [] } }]
+      include: [{ model: Skill, as: 'skills', through: { attributes: [] } }],
     });
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
 
     const skillNames = user.skills ? user.skills.map(s => s.name).join(', ') : '';
-    const cvText = `Bio: ${user.bio || 'None'}. Skills: ${skillNames}`;
+    const cvText    = `Bio: ${user.bio || ''}. Skills: ${skillNames}`;
 
-    // 2. Call the AI service
-    const recommendations = await aiService.getJobRecommendations(seekerId, cvText);
+    // 2. Call the AI recommendation service
+    const aiResults = await aiService.getJobRecommendations(seekerId, cvText);
+    // aiResults = [{ job: { id, title, ... }, score: 0.92 }, ...]
 
-    // The AI returns { job: {...}, score: ... } array directly
-    return res.status(200).json({ success: true, data: recommendations });
+    if (!aiResults || aiResults.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // 3. Build a score map: jobId → score (so we can attach it later)
+    const scoreMap = {};
+    const jobIds   = aiResults.map(r => { scoreMap[r.job.id] = r.score; return r.job.id; });
+
+    // 4. Fetch those exact jobs from OUR database — with Company + Skills
+    const fullJobs = await Job.findAll({
+      where: { id: { [Op.in]: jobIds } },
+      include: [
+        { model: Company, as: 'company', attributes: ['id', 'name', 'logo'] },
+        { model: Skill,   as: 'skills',  through: { attributes: [] } },
+      ],
+    });
+
+    // 5. Re-sort to match the AI's ranking order and attach the score
+    const enriched = jobIds
+      .map(id => {
+        const job = fullJobs.find(j => j.id === id);
+        if (!job) return null;
+        return { job, score: scoreMap[id] };
+      })
+      .filter(Boolean);
+
+    return res.status(200).json({ success: true, data: enriched });
   } catch (err) {
     next(err);
   }
