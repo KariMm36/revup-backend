@@ -11,8 +11,9 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     
-    // Auto-create missing tables for new AI CV features
-    const { Experience, Education, Certification } = require('./src/models');
+    // Auto-create/alter tables for new columns and models
+    const { User, Experience, Education, Certification } = require('./src/models');
+    await User.sync({ alter: true });        // adds new 'phone' column safely
     await Experience.sync();
     await Education.sync();
     await Certification.sync();

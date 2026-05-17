@@ -42,6 +42,10 @@ const User = sequelize.define('User', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  phone: {
+    type: DataTypes.STRING(30),
+    allowNull: true,
+  },
   profile_pic: {
     type: DataTypes.STRING(500),
     allowNull: true,

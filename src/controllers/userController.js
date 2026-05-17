@@ -75,9 +75,12 @@ exports.uploadResume = async (req, res, next) => {
       // 1. Send CV buffer to AI for parsing BEFORE uploading to Cloudinary
       aiProfile = await aiService.parseCV(req.file.buffer, req.file.originalname);
       
-      // 2. Update user bio if AI extracted a summary
-      if (aiProfile.summary) {
-        await user.update({ bio: aiProfile.summary });
+      // 2. Update user bio and phone if AI extracted them
+      const profileUpdates = {};
+      if (aiProfile.summary) profileUpdates.bio = aiProfile.summary;
+      if (aiProfile.phone)   profileUpdates.phone = aiProfile.phone;
+      if (Object.keys(profileUpdates).length > 0) {
+        await user.update(profileUpdates);
       }
 
       // 3. Match extracted skills to our Skills table
@@ -153,9 +156,9 @@ exports.uploadResume = async (req, res, next) => {
     // 5. Update user with new resume URL
     await user.update({ resume_url: resumeUrl });
 
-    // 6. Fetch updated user profile with skills and new history to return
+    // 6. Fetch updated user profile with all data to return
     const updatedUser = await User.findByPk(req.user.id, {
-      attributes: ['id', 'name', 'bio', 'resume_url'],
+      attributes: ['id', 'name', 'email', 'phone', 'bio', 'resume_url'],
       include: [
         { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } },
         { model: Experience, as: 'experience' },
