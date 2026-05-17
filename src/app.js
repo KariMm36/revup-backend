@@ -28,7 +28,16 @@ const app = express();
 
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
-app.use(cors());
+
+// ─── CORS — Allow frontend to send Authorization headers (OPTIONS preflight) ──
+const corsOptions = {
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight for ALL routes
+
 app.use(passport.initialize()); // OAuth — no sessions needed (JWT-based)
 
 // ─── Body Parsers ────────────────────────────────────────────────────────────
