@@ -12,11 +12,6 @@ const Certification = sequelize.define('Certification', {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'Users',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
   },
   name: {
     type: DataTypes.STRING(150),

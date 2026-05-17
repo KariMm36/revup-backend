@@ -12,11 +12,6 @@ const Education = sequelize.define('Education', {
   user_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    references: {
-      model: 'Users',
-      key: 'id'
-    },
-    onDelete: 'CASCADE'
   },
   degree: {
     type: DataTypes.STRING(150),
