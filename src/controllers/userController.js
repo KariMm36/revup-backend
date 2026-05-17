@@ -2,7 +2,7 @@
 
 const path = require('path');
 const { Op } = require('sequelize');
-const { User, Job, Skill, SavedJob, Application, Company } = require('../models');
+const { User, Job, Skill, SavedJob, Application, Company, Experience, Education, Certification } = require('../models');
 const aiService = require('../services/aiService');
 
 // GET /api/users/profile
@@ -10,7 +10,12 @@ exports.getProfile = async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password', 'reset_token', 'reset_token_expiry'] },
-      include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
+      include: [
+        { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } },
+        { model: Experience, as: 'experience' },
+        { model: Education, as: 'education' },
+        { model: Certification, as: 'certifications' }
+      ],
     });
     return res.status(200).json({ success: true, data: user });
   } catch (err) {
@@ -85,6 +90,47 @@ exports.uploadResume = async (req, res, next) => {
           await user.setSkills(matchedSkills);
         }
       }
+
+      // 4. Save Experience, Education, and Certifications
+      // Clear old data first to prevent duplicates
+      await Experience.destroy({ where: { user_id: user.id } });
+      await Education.destroy({ where: { user_id: user.id } });
+      await Certification.destroy({ where: { user_id: user.id } });
+
+      if (aiProfile.experience && Array.isArray(aiProfile.experience) && aiProfile.experience.length > 0) {
+        await Experience.bulkCreate(
+          aiProfile.experience.map(e => ({
+            user_id: user.id,
+            title: e.title || 'Unknown Role',
+            company: e.company || '',
+            duration: e.duration || '',
+            description: e.description || ''
+          }))
+        );
+      }
+
+      if (aiProfile.education && Array.isArray(aiProfile.education) && aiProfile.education.length > 0) {
+        await Education.bulkCreate(
+          aiProfile.education.map(e => ({
+            user_id: user.id,
+            degree: e.degree || 'Unknown Degree',
+            university: e.university || '',
+            duration: e.duration || ''
+          }))
+        );
+      }
+
+      if (aiProfile.certifications && Array.isArray(aiProfile.certifications) && aiProfile.certifications.length > 0) {
+        await Certification.bulkCreate(
+          aiProfile.certifications.map(c => ({
+            user_id: user.id,
+            name: c.name || 'Unknown Certification',
+            organization: c.organization || '',
+            year: c.year || ''
+          }))
+        );
+      }
+
     } catch (parseError) {
       console.error('CV Parsing failed, but upload will continue:', parseError);
     }
@@ -107,10 +153,15 @@ exports.uploadResume = async (req, res, next) => {
     // 5. Update user with new resume URL
     await user.update({ resume_url: resumeUrl });
 
-    // 6. Fetch updated user profile with skills to return
+    // 6. Fetch updated user profile with skills and new history to return
     const updatedUser = await User.findByPk(req.user.id, {
       attributes: ['id', 'name', 'bio', 'resume_url'],
-      include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
+      include: [
+        { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } },
+        { model: Experience, as: 'experience' },
+        { model: Education, as: 'education' },
+        { model: Certification, as: 'certifications' }
+      ],
     });
 
     return res.status(200).json({ 

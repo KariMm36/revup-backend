@@ -10,6 +10,9 @@ const Notification    = require('./Notification');
 const UserSkill       = require('./UserSkill');
 const JobSkill        = require('./JobSkill');
 const SavedJob        = require('./SavedJob');
+const Experience      = require('./Experience');
+const Education       = require('./Education');
+const Certification   = require('./Certification');
 
 // ─── Phase 3 — Courses Models ─────────────────────────────────────────────────
 const Course          = require('./Course');
@@ -61,6 +64,18 @@ Skill.belongsToMany(Job, { through: JobSkill, foreignKey: 'skill_id', otherKey: 
 User.belongsToMany(Job, { through: SavedJob, foreignKey: 'user_id', otherKey: 'job_id', as: 'savedJobs' });
 Job.belongsToMany(User, { through: SavedJob, foreignKey: 'job_id', otherKey: 'user_id', as: 'savedByUsers' });
 
+// ─── User <-> Experience ──────────────────────────────────────────────────────
+User.hasMany(Experience, { foreignKey: 'user_id', as: 'experience', onDelete: 'CASCADE' });
+Experience.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// ─── User <-> Education ───────────────────────────────────────────────────────
+User.hasMany(Education, { foreignKey: 'user_id', as: 'education', onDelete: 'CASCADE' });
+Education.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// ─── User <-> Certification ───────────────────────────────────────────────────
+User.hasMany(Certification, { foreignKey: 'user_id', as: 'certifications', onDelete: 'CASCADE' });
+Certification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ASSOCIATIONS — Phase 3 (Courses)
@@ -100,6 +115,9 @@ module.exports = {
   UserSkill,
   JobSkill,
   SavedJob,
+  Experience,
+  Education,
+  Certification,
   // Phase 3
   Course,
   Lesson,

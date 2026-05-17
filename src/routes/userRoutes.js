@@ -25,7 +25,8 @@ const { uploadResume, uploadProfilePic } = require('../config/multer');
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200: { description: User profile }
+ *       200: 
+ *         description: User profile including skills, experience, education, and certifications.
  *   put:
  *     tags: [Users]
  *     summary: Update bio and personal info
@@ -120,7 +121,7 @@ router.put('/skills', protect, authorize('seeker'), updateSkillsRules, validate,
  *             properties:
  *               resume: { type: string, format: binary }
  *     responses:
- *       200: { description: Resume uploaded and parsed successfully, returns updated user profile and AI raw data }
+ *       200: { description: Resume uploaded and parsed successfully, returns updated user profile (with skills, experience, education, etc.) and AI raw data }
  *       400: { description: Invalid file type or no file uploaded }
  */
 router.post('/resume', protect, authorize('seeker'), uploadResume.single('resume'), userController.uploadResume);
