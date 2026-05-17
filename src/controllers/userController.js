@@ -1,7 +1,9 @@
 'use strict';
 
 const path = require('path');
+const { Op } = require('sequelize');
 const { User, Job, Skill, SavedJob, Application, Company } = require('../models');
+const aiService = require('../services/aiService');
 
 // GET /api/users/profile
 exports.getProfile = async (req, res, next) => {
@@ -59,7 +61,56 @@ exports.uploadResume = async (req, res, next) => {
     const user = await User.findByPk(req.user.id);
     await user.update({ resume_url: resumeUrl });
 
-    return res.status(200).json({ success: true, message: 'Resume uploaded.', resume_url: resumeUrl });
+    // ─── AI CV Parsing Integration ───────────────────────────────────────────
+    try {
+      // 1. Send CV to AI for parsing
+      const aiProfile = await aiService.parseCV(resumeUrl);
+      
+      // 2. Update user bio if AI extracted a summary
+      if (aiProfile.summary) {
+        await user.update({ bio: aiProfile.summary });
+      }
+
+      // 3. Match extracted skills to our Skills table
+      if (aiProfile.skills && Array.isArray(aiProfile.skills) && aiProfile.skills.length > 0) {
+        // Find skills in DB that match the AI's extracted skill names (case-insensitive)
+        const matchedSkills = await Skill.findAll({
+          where: {
+            name: {
+              [Op.in]: aiProfile.skills
+            }
+          }
+        });
+
+        // 4. Link matched skills to the user
+        if (matchedSkills.length > 0) {
+          await user.setSkills(matchedSkills);
+        }
+      }
+
+      // 5. Fetch updated user profile with skills to return
+      const updatedUser = await User.findByPk(req.user.id, {
+        attributes: ['id', 'name', 'bio', 'resume_url'],
+        include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
+      });
+
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Resume uploaded and parsed successfully.', 
+        data: updatedUser,
+        ai_raw_profile: aiProfile // optional: helpful for frontend or debugging
+      });
+
+    } catch (parseError) {
+      console.error('CV Parsing failed, but upload succeeded:', parseError);
+      // We don't fail the upload if parsing fails, we just return the URL
+      return res.status(200).json({ 
+        success: true, 
+        message: 'Resume uploaded, but AI parsing failed.', 
+        resume_url: resumeUrl 
+      });
+    }
+
   } catch (err) {
     next(err);
   }
