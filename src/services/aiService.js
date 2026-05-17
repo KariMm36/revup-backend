@@ -10,10 +10,21 @@ const FormData = require('form-data');
 // If env var is not set, fallback to the known Railway URL
 const AI_BASE_URL = process.env.AI_API_URL || 'https://recommend-for-the-website-production.up.railway.app';
 
-exports.getJobRecommendations = async (userId, cvText) => {
-  // NOTE: Based on the new AI API, this should be updated to send skills, title, summary
-  // We will keep this as a placeholder, but the actual implementation needs to match the new API
-  throw new Error('This method needs to be updated to match the new AI recommendation format.');
+exports.getJobRecommendations = async (profileData) => {
+  try {
+    const aiUrl = 'https://cvparser-with-recommendation-production.up.railway.app/api/v1/recommend-jobs';
+    const response = await axios.post(aiUrl, {
+      skills: profileData.skills || [],
+      title: profileData.title || '',
+      summary: profileData.summary || ''
+    });
+    
+    // The AI returns { success: true, total: 10, recommendations: [...] }
+    return response.data.recommendations || [];
+  } catch (error) {
+    console.error('AI Recommendation Service Error:', error.response?.data || error.message);
+    throw new Error('Failed to fetch job recommendations from AI service');
+  }
 };
 
 /**

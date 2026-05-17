@@ -74,18 +74,23 @@ exports.getRecommendedJobs = async (req, res, next) => {
   try {
     const seekerId = req.user.id;
 
-    // 1. Fetch the seeker's profile to build a cv_text for the AI
+    // 1. Fetch the seeker's profile to build the profileData payload
     const user = await User.findByPk(seekerId, {
       include: [{ model: Skill, as: 'skills', through: { attributes: [] } }],
     });
     if (!user) return res.status(404).json({ success: false, message: 'User not found.' });
 
-    const skillNames = user.skills ? user.skills.map(s => s.name).join(', ') : '';
-    const cvText    = `Bio: ${user.bio || ''}. Skills: ${skillNames}`;
+    const skillNames = user.skills ? user.skills.map(s => s.name) : [];
+    
+    const profileData = {
+      skills: skillNames,
+      title: user.title || '', // You might want to extract title from somewhere, defaulting to empty
+      summary: user.bio || ''
+    };
 
     // 2. Call the AI recommendation service
-    const aiResults = await aiService.getJobRecommendations(seekerId, cvText);
-    // aiResults = [{ job: { id, title, ... }, score: 0.92 }, ...]
+    const aiResults = await aiService.getJobRecommendations(profileData);
+    // aiResults = [ { job_id: 4, match_score: 53, ... }, ... ]
 
     if (!aiResults || aiResults.length === 0) {
       return res.status(200).json({ success: true, data: [] });
@@ -93,7 +98,10 @@ exports.getRecommendedJobs = async (req, res, next) => {
 
     // 3. Build a score map: jobId → score (so we can attach it later)
     const scoreMap = {};
-    const jobIds   = aiResults.map(r => { scoreMap[r.job.id] = r.score; return r.job.id; });
+    const jobIds = aiResults.map(r => { 
+      scoreMap[r.job_id] = r.match_score; 
+      return r.job_id; 
+    });
 
     // 4. Fetch those exact jobs from OUR database — with Company + Skills
     const fullJobs = await Job.findAll({
