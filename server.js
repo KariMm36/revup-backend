@@ -10,6 +10,12 @@ const PORT = process.env.PORT || 5000;
 const start = async () => {
   try {
     await sequelize.authenticate();
+    
+    // Auto-create missing tables for new AI CV features
+    const { Experience, Education, Certification } = require('./src/models');
+    await Experience.sync();
+    await Education.sync();
+    await Certification.sync();
 
     app.listen(PORT, () => {
       console.log('\n    RevUp API is live');
