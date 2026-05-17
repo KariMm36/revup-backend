@@ -77,8 +77,9 @@ exports.uploadResume = async (req, res, next) => {
       
       // 2. Update user bio and phone if AI extracted them
       const profileUpdates = {};
-      if (aiProfile.summary) profileUpdates.bio = aiProfile.summary;
-      if (aiProfile.phone)   profileUpdates.phone = aiProfile.phone;
+      if (aiProfile.summary)  profileUpdates.bio      = aiProfile.summary;
+      if (aiProfile.phone)    profileUpdates.phone    = aiProfile.phone;
+      if (aiProfile.location) profileUpdates.location = aiProfile.location;
       if (Object.keys(profileUpdates).length > 0) {
         await user.update(profileUpdates);
       }
@@ -158,7 +159,7 @@ exports.uploadResume = async (req, res, next) => {
 
     // 6. Fetch updated user profile with all data to return
     const updatedUser = await User.findByPk(req.user.id, {
-      attributes: ['id', 'name', 'email', 'phone', 'bio', 'resume_url'],
+      attributes: ['id', 'name', 'email', 'phone', 'location', 'bio', 'resume_url'],
       include: [
         { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } },
         { model: Experience, as: 'experience' },
