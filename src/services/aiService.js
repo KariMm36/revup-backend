@@ -17,27 +17,21 @@ exports.getJobRecommendations = async (userId, cvText) => {
 };
 
 /**
- * Parses a CV by downloading it from the Cloudinary URL and sending it to the AI Service.
- * @param {string} fileUrl - The Cloudinary URL of the uploaded resume
+ * Parses a CV by sending the file buffer to the AI Service.
+ * @param {Buffer} fileBuffer - The binary buffer of the uploaded resume
+ * @param {string} originalName - The original file name (e.g., 'resume.pdf')
  * @returns {Promise<Object>} The extracted structured profile { skills, title, summary, experience, etc. }
  */
-exports.parseCV = async (fileUrl) => {
+exports.parseCV = async (fileBuffer, originalName) => {
   try {
-    // 1. Download the file stream from Cloudinary
-    const fileResponse = await axios({
-      method: 'get',
-      url: fileUrl,
-      responseType: 'stream'
-    });
-
-    // 2. Prepare the multipart/form-data payload
+    // 1. Prepare the multipart/form-data payload using the memory buffer
     const form = new FormData();
-    form.append('file', fileResponse.data, {
-      filename: 'resume.pdf', // filename is required for form-data to treat it as a file
+    form.append('file', fileBuffer, {
+      filename: originalName,
       contentType: 'application/pdf',
     });
 
-    // 3. Post to AI API
+    // 2. Post to AI API
     const aiUrl = 'https://cvparser-with-recommendation-production.up.railway.app/api/v1/upload-cv';
     const response = await axios.post(aiUrl, form, {
       headers: {

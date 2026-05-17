@@ -11,16 +11,10 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ─── Resume Storage (PDF/DOCX → Cloudinary /revup/resumes) ──────────────────
-const resumeStorage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => ({
-    folder:        'revup/resumes',
-    public_id:     `resume_${req.user.id}_${Date.now()}`,
-    resource_type: 'raw',          // required for non-image files (PDF, DOCX)
-    format:        file.originalname.split('.').pop().toLowerCase(),
-  }),
-});
+// ─── Resume Storage (Memory Storage for AI Parsing) ───────────────────────────
+// We need the file in memory so we can send it to the AI parser FIRST,
+// before manually uploading it to Cloudinary.
+const resumeStorage = multer.memoryStorage();
 
 const resumeFilter = (req, file, cb) => {
   const allowed = [

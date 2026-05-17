@@ -52,19 +52,23 @@ exports.updateSkills = async (req, res, next) => {
   }
 };
 
+const cloudinary = require('cloudinary').v2;
+const streamifier = require('stream');
+
 // POST /api/users/resume
 exports.uploadResume = async (req, res, next) => {
   try {
-    if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ success: false, message: 'No file uploaded.' });
+    }
 
-    const resumeUrl = req.file.path;
     const user = await User.findByPk(req.user.id);
-    await user.update({ resume_url: resumeUrl });
+    let aiProfile = null;
 
     // ─── AI CV Parsing Integration ───────────────────────────────────────────
     try {
-      // 1. Send CV to AI for parsing
-      const aiProfile = await aiService.parseCV(resumeUrl);
+      // 1. Send CV buffer to AI for parsing BEFORE uploading to Cloudinary
+      aiProfile = await aiService.parseCV(req.file.buffer, req.file.originalname);
       
       // 2. Update user bio if AI extracted a summary
       if (aiProfile.summary) {
@@ -73,43 +77,48 @@ exports.uploadResume = async (req, res, next) => {
 
       // 3. Match extracted skills to our Skills table
       if (aiProfile.skills && Array.isArray(aiProfile.skills) && aiProfile.skills.length > 0) {
-        // Find skills in DB that match the AI's extracted skill names (case-insensitive)
         const matchedSkills = await Skill.findAll({
-          where: {
-            name: {
-              [Op.in]: aiProfile.skills
-            }
-          }
+          where: { name: { [Op.in]: aiProfile.skills } }
         });
 
-        // 4. Link matched skills to the user
         if (matchedSkills.length > 0) {
           await user.setSkills(matchedSkills);
         }
       }
-
-      // 5. Fetch updated user profile with skills to return
-      const updatedUser = await User.findByPk(req.user.id, {
-        attributes: ['id', 'name', 'bio', 'resume_url'],
-        include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
-      });
-
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Resume uploaded and parsed successfully.', 
-        data: updatedUser,
-        ai_raw_profile: aiProfile // optional: helpful for frontend or debugging
-      });
-
     } catch (parseError) {
-      console.error('CV Parsing failed, but upload succeeded:', parseError);
-      // We don't fail the upload if parsing fails, we just return the URL
-      return res.status(200).json({ 
-        success: true, 
-        message: 'Resume uploaded, but AI parsing failed.', 
-        resume_url: resumeUrl 
-      });
+      console.error('CV Parsing failed, but upload will continue:', parseError);
     }
+
+    // ─── Cloudinary Upload ───────────────────────────────────────────────────
+    // 4. Manually upload the buffer to Cloudinary (raw resource type for PDF)
+    const resumeUrl = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.uploader.upload_stream(
+        { folder: 'revup/resumes', resource_type: 'raw' },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result.secure_url);
+        }
+      );
+      const bufferStream = new streamifier.PassThrough();
+      bufferStream.end(req.file.buffer);
+      bufferStream.pipe(uploadStream);
+    });
+
+    // 5. Update user with new resume URL
+    await user.update({ resume_url: resumeUrl });
+
+    // 6. Fetch updated user profile with skills to return
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'bio', 'resume_url'],
+      include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
+    });
+
+    return res.status(200).json({ 
+      success: true, 
+      message: aiProfile ? 'Resume uploaded and parsed successfully.' : 'Resume uploaded, but AI parsing failed.', 
+      data: updatedUser,
+      ai_raw_profile: aiProfile || null
+    });
 
   } catch (err) {
     next(err);
