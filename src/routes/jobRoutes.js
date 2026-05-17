@@ -33,11 +33,12 @@ router.get('/latest', jobController.getLatestJobs);
  * /api/jobs/recommended:
  *   get:
  *     tags: [Jobs]
- *     summary: Get skill-matched jobs ranked by percentage (Seeker only)
+ *     summary: Get AI-recommended jobs based on the Seeker's CV/Profile (Seeker only)
+ *     description: Forwards the seeker's skills and bio to the AI Recommender Service, fetches full job details from the DB, and returns them ranked by the AI match score.
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200: { description: Recommended jobs with match_percentage }
+ *       200: { description: List of recommended jobs enriched with AI match scores }
  */
 router.get('/recommended', protect, authorize('seeker'), jobController.getRecommendedJobs);
 

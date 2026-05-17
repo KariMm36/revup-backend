@@ -108,7 +108,8 @@ router.put('/skills', protect, authorize('seeker'), updateSkillsRules, validate,
  * /api/users/resume:
  *   post:
  *     tags: [Users]
- *     summary: Upload or replace resume (PDF, max 5MB)
+ *     summary: Upload CV to Cloudinary and auto-parse profile using AI (PDF/DOCX, max 10MB)
+ *     description: Uploads the resume to Cloudinary, sends it to the AI parser, auto-updates the user's bio and skills, and returns the updated profile.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -119,8 +120,8 @@ router.put('/skills', protect, authorize('seeker'), updateSkillsRules, validate,
  *             properties:
  *               resume: { type: string, format: binary }
  *     responses:
- *       200: { description: Resume uploaded }
- *       400: { description: Invalid file type }
+ *       200: { description: Resume uploaded and parsed successfully, returns updated user profile and AI raw data }
+ *       400: { description: Invalid file type or no file uploaded }
  */
 router.post('/resume', protect, authorize('seeker'), uploadResume.single('resume'), userController.uploadResume);
 
