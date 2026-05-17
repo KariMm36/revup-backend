@@ -55,7 +55,7 @@ exports.uploadResume = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded.' });
 
-    const resumeUrl = `/uploads/resumes/${req.file.filename}`;
+    const resumeUrl = req.file.path;
     const user = await User.findByPk(req.user.id);
     await user.update({ resume_url: resumeUrl });
 
@@ -70,7 +70,7 @@ exports.uploadProfilePic = async (req, res, next) => {
   try {
     if (!req.file) return res.status(400).json({ success: false, message: 'No image uploaded.' });
 
-    const picUrl = `/uploads/profiles/${req.file.filename}`;
+    const picUrl = req.file.path;
     const user = await User.findByPk(req.user.id);
     await user.update({ profile_pic: picUrl });
 

@@ -82,7 +82,7 @@ exports.updateCompany = async (req, res, next) => {
     if (!company) return res.status(404).json({ success: false, message: 'Company not found.' });
 
     const { name, website, description } = req.body;
-    const logoUrl = req.file ? `/uploads/logos/${req.file.filename}` : company.logo;
+    const logoUrl = req.file ? req.file.path : company.logo;
 
     await company.update({
       name: name || company.name,
