@@ -1,7 +1,8 @@
 'use strict';
 
 const axios = require('axios');
-const { Interview, User, Notification } = require('../models');
+const { Op } = require('sequelize');
+const { Interview, User, Notification, Application, Job } = require('../models');
 
 const AI_API_BASE = 'https://interview-production-ee82.up.railway.app';
 
@@ -127,9 +128,44 @@ exports.submitInterview = async (req, res, next) => {
       total_score: totalScore,
     });
 
-    // Notify all recruiters about the new interview result
-    // We find all users with role 'recruiter' to notify them
-    const recruiters = await User.findAll({ where: { role: 'recruiter' } });
+    // ── Smart Recruiter Notification ────────────────────────────────────────
+    // Only notify recruiters from companies the seeker has applied to,
+    // not every single recruiter on the platform.
+    const seekerApplications = await Application.findAll({
+      where: { seeker_id: req.user.id },
+      include: [{
+        model: Job,
+        as: 'job',
+        attributes: ['company_id'],
+      }],
+    });
+
+    const companyIds = [...new Set(
+      seekerApplications
+        .filter(app => app.job)
+        .map(app => app.job.company_id)
+    )];
+
+    let recruiters = [];
+    if (companyIds.length > 0) {
+      // Find recruiters belonging to those companies
+      recruiters = await User.findAll({
+        where: {
+          role: 'recruiter',
+          company_id: { [Op.in]: companyIds },
+        },
+        attributes: ['id'],
+      });
+    }
+
+    // Fallback: if seeker hasn't applied anywhere yet, notify all recruiters
+    if (recruiters.length === 0) {
+      recruiters = await User.findAll({
+        where: { role: 'recruiter' },
+        attributes: ['id'],
+      });
+    }
+
     const notifications = recruiters.map((recruiter) => ({
       user_id: recruiter.id,
       message: `${req.user.name} has completed their AI interview for the ${interview.track} track. Score: ${totalScore ?? 'N/A'}%. Please review their results.`,
@@ -159,13 +195,30 @@ exports.submitInterview = async (req, res, next) => {
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getMyInterviews = async (req, res, next) => {
   try {
-    const interviews = await Interview.findAll({
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 10));
+    const offset = (page - 1) * limit;
+
+    const { count, rows } = await Interview.findAndCountAll({
       where: { seeker_id: req.user.id },
       attributes: ['id', 'track', 'status', 'total_score', 'createdAt', 'updatedAt'],
       order: [['createdAt', 'DESC']],
+      limit,
+      offset,
     });
 
-    return res.status(200).json({ success: true, data: interviews });
+    return res.status(200).json({
+      success: true,
+      data: rows,
+      pagination: {
+        total: count,
+        page,
+        limit,
+        totalPages: Math.ceil(count / limit),
+        hasNext: page < Math.ceil(count / limit),
+        hasPrev: page > 1,
+      },
+    });
   } catch (err) {
     next(err);
   }

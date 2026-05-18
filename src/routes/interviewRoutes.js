@@ -5,6 +5,26 @@ const router = express.Router();
 
 const interviewController = require('../controllers/interviewController');
 const { protect, authorize } = require('../middlewares/auth');
+const validate = require('../middlewares/validate');
+const { startRules, submitRules, decisionRules } = require('../validators/interviewValidators');
+const rateLimit = require('express-rate-limit');
+
+// ── Rate Limiters for AI endpoints (expensive calls) ─────────────────────────
+const startLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { success: false, message: 'Too many interview attempts. You can start up to 5 interviews per hour. Please wait and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const submitLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  message: { success: false, message: 'Too many submissions. You can submit up to 5 interviews per hour. Please wait and try again.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @openapi
@@ -44,7 +64,7 @@ const { protect, authorize } = require('../middlewares/auth');
  *       502:
  *         description: AI service unavailable
  */
-router.post('/start', protect, authorize('seeker'), interviewController.startInterview);
+router.post('/start', protect, authorize('seeker'), startLimiter, startRules, validate, interviewController.startInterview);
 
 /**
  * @openapi
@@ -84,7 +104,7 @@ router.post('/start', protect, authorize('seeker'), interviewController.startInt
  *       502:
  *         description: AI grading service unavailable
  */
-router.post('/submit', protect, authorize('seeker'), interviewController.submitInterview);
+router.post('/submit', protect, authorize('seeker'), submitLimiter, submitRules, validate, interviewController.submitInterview);
 
 /**
  * @openapi
@@ -182,6 +202,6 @@ router.get('/applicant/:seekerId', protect, authorize('recruiter'), interviewCon
  *       404:
  *         description: Interview not found
  */
-router.patch('/:id/decision', protect, authorize('recruiter'), interviewController.makeDecision);
+router.patch('/:id/decision', protect, authorize('recruiter'), decisionRules, validate, interviewController.makeDecision);
 
 module.exports = router;

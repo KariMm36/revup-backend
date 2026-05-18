@@ -5,6 +5,8 @@ const router = express.Router();
 
 const scheduleController = require('../controllers/scheduleController');
 const { protect, authorize } = require('../middlewares/auth');
+const validate = require('../middlewares/validate');
+const { scheduleRules, updateScheduleRules } = require('../validators/scheduleValidators');
 
 /**
  * @openapi
@@ -62,7 +64,7 @@ const { protect, authorize } = require('../middlewares/auth');
  *       409:
  *         description: Already scheduled
  */
-router.post('/', protect, authorize('recruiter'), scheduleController.scheduleInterview);
+router.post('/', protect, authorize('recruiter'), scheduleRules, validate, scheduleController.scheduleInterview);
 
 /**
  * @openapi
@@ -111,7 +113,7 @@ router.get('/', protect, authorize('recruiter'), scheduleController.getRecruiter
  *       404:
  *         description: Schedule not found
  */
-router.patch('/:id', protect, authorize('recruiter'), scheduleController.updateSchedule);
+router.patch('/:id', protect, authorize('recruiter'), updateScheduleRules, validate, scheduleController.updateSchedule);
 
 /**
  * @openapi
