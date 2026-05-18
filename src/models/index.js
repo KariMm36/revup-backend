@@ -20,6 +20,10 @@ const Lesson          = require('./Lesson');
 const Enrollment      = require('./Enrollment');
 const LessonProgress  = require('./LessonProgress');
 
+// ─── Phase 4 — Interview Agent ───────────────────────────────────────────────
+const Interview           = require('./Interview');
+const InterviewSchedule   = require('./InterviewSchedule');
+
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -103,6 +107,28 @@ LessonProgress.belongsTo(User,   { foreignKey: 'user_id',   as: 'user' });
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+// ASSOCIATIONS — Phase 4 (Interview Agent)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── User (Seeker) <-> Interview ─────────────────────────────────────────────
+User.hasMany(Interview, { foreignKey: 'seeker_id', as: 'interviews', onDelete: 'CASCADE' });
+Interview.belongsTo(User, { foreignKey: 'seeker_id', as: 'seeker' });
+
+// ─── InterviewSchedule associations ──────────────────────────────────────────
+// Interview (passed) → has one Schedule
+Interview.hasOne(InterviewSchedule, { foreignKey: 'interview_id', as: 'schedule', onDelete: 'CASCADE' });
+InterviewSchedule.belongsTo(Interview, { foreignKey: 'interview_id', as: 'interview' });
+
+// Seeker → has many schedules
+User.hasMany(InterviewSchedule, { foreignKey: 'seeker_id', as: 'seekerSchedules', onDelete: 'CASCADE' });
+InterviewSchedule.belongsTo(User, { foreignKey: 'seeker_id', as: 'seeker' });
+
+// Recruiter → has many schedules they created
+User.hasMany(InterviewSchedule, { foreignKey: 'recruiter_id', as: 'recruiterSchedules' });
+InterviewSchedule.belongsTo(User, { foreignKey: 'recruiter_id', as: 'recruiter' });
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 // EXPORTS
 // ═══════════════════════════════════════════════════════════════════════════════
 module.exports = {
@@ -123,4 +149,7 @@ module.exports = {
   Lesson,
   Enrollment,
   LessonProgress,
+  // Phase 4
+  Interview,
+  InterviewSchedule,
 };

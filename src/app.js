@@ -21,6 +21,8 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const seedRoutes = require('./routes/seedRoutes');
+const interviewRoutes = require('./routes/interviewRoutes');
+const scheduleRoutes  = require('./routes/scheduleRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const passport = require('./config/passport'); // registers OAuth strategies
 
@@ -68,6 +70,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/interview', interviewRoutes);
+app.use('/api/schedule',  scheduleRoutes);
 // Seed route disabled after initial DB population
 // app.use('/api/seed', seedRoutes);
 
