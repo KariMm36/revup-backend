@@ -11,12 +11,17 @@ const start = async () => {
   try {
     await sequelize.authenticate();
     
-    // Auto-create/alter tables for new columns and models
-    const { User, Experience, Education, Certification } = require('./src/models');
-    await User.sync({ alter: true });        // adds new 'phone' column safely
-    await Experience.sync();
-    await Education.sync();
-    await Certification.sync();
+    const {
+      User, Experience, Education, Certification,
+      Interview, InterviewSchedule,
+    } = require('./src/models');
+
+    await User.sync({ alter: true });
+    await Experience.sync({ alter: true });
+    await Education.sync({ alter: true });
+    await Certification.sync({ alter: true });
+    await Interview.sync({ alter: true });
+    await InterviewSchedule.sync({ alter: true });
 
     app.listen(PORT, () => {
       console.log('\n    RevUp API is live');
