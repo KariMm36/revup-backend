@@ -1,15 +1,22 @@
 # RevUp — Job Portal REST API
 
-A production-level RESTful API connecting **Job Seekers**, **Recruiters**, and **Admins**.
+A production-level RESTful API connecting **Job Seekers**, **Recruiters**, and **Admins** — built for a graduation project.
+
+---
 
 ## Tech Stack
-- **Runtime:** Node.js + Express.js
-- **Database:** MySQL via Sequelize ORM
-- **Auth:** JWT with Role-Based Access Control (RBAC)
-- **Security:** Helmet, CORS, Bcrypt, Express-Validator
-- **Files:** Multer (local storage)
-- **Email:** Nodemailer (Gmail SMTP)
-- **Docs:** Swagger UI (OpenAPI 3.0)
+
+| Layer | Technology |
+|---|---|
+| **Runtime** | Node.js + Express.js |
+| **Database** | MySQL via Sequelize ORM |
+| **Auth** | JWT + Role-Based Access Control (RBAC) |
+| **AI Integration** | Groq LLM (via Interview Agent API) |
+| **Security** | Helmet, CORS, Bcrypt, Express-Validator |
+| **File Uploads** | Multer + Cloudinary |
+| **Email** | Nodemailer (Gmail SMTP) |
+| **Docs** | Swagger UI (OpenAPI 3.0) |
+| **Deployment** | Railway |
 
 ---
 
@@ -17,57 +24,133 @@ A production-level RESTful API connecting **Job Seekers**, **Recruiters**, and *
 
 ### 1. Clone and install
 ```bash
+git clone https://github.com/KariMm36/revup-backend.git
+cd revup-backend
 npm install
 ```
 
-### 4. Start the server
+### 2. Start the server
 ```bash
 npm run dev
 ```
 
-The server will auto-create all tables on first run via `sequelize.sync()`.
+> The server auto-creates all database tables on first run via `sequelize.sync()`.
 
 ---
 
 ## API Documentation
-Visit `http://localhost:5000/api-docs` for the full interactive Swagger UI.
+
+Full interactive Swagger UI:
+```
+http://localhost:5000/api-docs
+```
 
 ---
 
-## Endpoints Summary
+## Endpoints Overview
 
-| Domain | Base Path | Auth |
+| Domain | Base Path | Who Can Access |
 |---|---|---|
-| Auth | `/api/auth` | Mixed |
+| Auth | `/api/auth` | Public / Mixed |
 | Seeker Profile | `/api/users` | Seeker |
 | Company | `/api/companies` | Recruiter |
-| Jobs | `/api/jobs` | Public/Role |
-| Applications | `/api/applications` | Role |
-| Skills | `/api/skills` | Public/Admin |
-| Admin | `/api/admin` | Admin |
-| Notifications | `/api/notifications` | Auth |
+| Jobs | `/api/jobs` | Public / Role |
+| Applications | `/api/applications` | Seeker + Recruiter |
+| Skills | `/api/skills` | Public / Admin |
+| Notifications | `/api/notifications` | All roles |
+| Courses | `/api/courses` | All roles (Admin manages) |
+| Analytics | `/api/analytics` | Recruiter / Admin |
+| Admin | `/api/admin` | Admin only |
+| **AI Interview** | **`/api/interview`** | **Seeker + Recruiter** |
+| **Scheduling** | **`/api/schedule`** | **Seeker + Recruiter** |
 
 ---
 
-## Folder Structure
+## Project Phases
+
+### ✅ Phase 1 — Core Platform
+Auth (JWT + RBAC), User profiles, Company management, Job listings, Applications, Skill-based job matching.
+
+### ✅ Phase 2 — Social & Uploads
+Resume & profile picture uploads (Cloudinary), Saved jobs, Education / Experience / Certifications, Google & GitHub OAuth.
+
+### ✅ Phase 3 — Courses & Learning
+Admin-managed courses and lessons, Seeker enrollment, Lesson progress tracking.
+
+### ✅ Phase 4 — AI Interview Agent
+AI-powered mock interview system with full recruiter decision workflow and real interview scheduling.
+
+**Interview Flow:**
 ```
-src/
-├── config/         DB, Multer, Mailer, Swagger
-├── models/         Sequelize models + associations
-├── middlewares/    Auth (JWT+RBAC), validate, errorHandler
-├── validators/     express-validator rule sets
-├── services/       emailService (3 HTML templates)
-├── controllers/    Business logic (8 controllers)
-└── routes/         Express routers (8 files) + Swagger JSDoc
+Seeker starts AI interview (picks track)
+        ↓
+Seeker submits answers → AI grades MCQ + written answers
+        ↓
+Recruiter reviews AI report (scores + cheating risk)
+        ↓
+Recruiter makes decision → passed / failed (seeker notified)
+        ↓
+Recruiter schedules real interview (date, location, notes)
+        ↓
+Seeker receives in-app notification + email with full details
 ```
+
+**Supported interview tracks:** `Frontend` · `Backend` · `AI Engineering` · `Data Engineering`
 
 ---
 
 ## Key Features
-- ✅ JWT stateless auth with role guards (seeker / recruiter / admin)
-- ✅ Skill-matching SQL algorithm for recommended jobs (% overlap)
+
+- ✅ JWT stateless auth with role guards (`seeker` / `recruiter` / `admin`)
+- ✅ Google & GitHub OAuth login
+- ✅ Skill-matching algorithm for AI-powered job recommendations
 - ✅ Privacy Rule: recruiter can only view seeker profile if they applied to their job
-- ✅ Email triggers: Registration, Status Change, Password Reset
+- ✅ AI mock interview with MCQ + written questions (Groq LLM)
+- ✅ AI answer grading + cheating risk detection
+- ✅ Recruiter pass/fail decision system with notifications
+- ✅ Real interview scheduling with email notifications
+- ✅ Email triggers: Welcome, Password Reset, Application Status, Interview Schedule, Cancellation
 - ✅ Full Swagger UI at `/api-docs`
 - ✅ Paginated job listings with search + filters
-- ✅ Resume (PDF) and company logo uploads
+- ✅ Resume (PDF) and company logo uploads via Cloudinary
+- ✅ Admin analytics dashboard
+
+---
+
+## Folder Structure
+
+```
+src/
+├── config/          DB, Multer, Cloudinary, Mailer, Swagger, Passport
+├── models/          Sequelize models + associations (17 models)
+│   ├── User.js
+│   ├── Interview.js          ← Phase 4
+│   ├── InterviewSchedule.js  ← Phase 4
+│   └── ...
+├── middlewares/     JWT auth, RBAC, validate, errorHandler
+├── validators/      express-validator rule sets
+├── services/        emailService (5 HTML email templates)
+│   └── aiService.js          ← AI proxy helpers
+├── controllers/     Business logic (12 controllers)
+│   ├── interviewController.js  ← Phase 4
+│   ├── scheduleController.js   ← Phase 4
+│   └── ...
+└── routes/          Express routers (12 files) + Swagger JSDoc
+    ├── interviewRoutes.js  ← Phase 4
+    ├── scheduleRoutes.js   ← Phase 4
+    └── ...
+```
+
+---
+
+## Roles
+
+| Role | Capabilities |
+|---|---|
+| `seeker` | Apply to jobs, take AI interviews, view schedule, enroll in courses |
+| `recruiter` | Post jobs, review applicants, review AI reports, schedule interviews |
+| `admin` | Full platform management, analytics, course management |
+
+---
+
+*Built with ❤️ as a graduation project — RevUp Team*
