@@ -20,32 +20,6 @@ A production-level RESTful API connecting **Job Seekers**, **Recruiters**, and *
 
 ---
 
-## Quick Start
-
-### 1. Clone and install
-```bash
-git clone https://github.com/KariMm36/revup-backend.git
-cd revup-backend
-npm install
-```
-
-### 2. Start the server
-```bash
-npm run dev
-```
-
-> The server auto-creates all database tables on first run via `sequelize.sync()`.
-
----
-
-## API Documentation
-
-Full interactive Swagger UI:
-```
-http://localhost:5000/api-docs
-```
-
----
 
 ## Endpoints Overview
 
@@ -72,31 +46,13 @@ http://localhost:5000/api-docs
 Auth (JWT + RBAC), User profiles, Company management, Job listings, Applications, Skill-based job matching.
 
 ### ✅ Phase 2 — Social & Uploads
-Resume & profile picture uploads (Cloudinary), Saved jobs, Education / Experience / Certifications, Google & GitHub OAuth.
+Resume & profile picture uploads, Saved jobs, Education / Experience / Certifications, Google & GitHub OAuth.
 
 ### ✅ Phase 3 — Courses & Learning
 Admin-managed courses and lessons, Seeker enrollment, Lesson progress tracking.
 
 ### ✅ Phase 4 — AI Interview Agent
 AI-powered mock interview system with full recruiter decision workflow and real interview scheduling.
-
-**Interview Flow:**
-```
-Seeker starts AI interview (picks track)
-        ↓
-Seeker submits answers → AI grades MCQ + written answers
-        ↓
-Recruiter reviews AI report (scores + cheating risk)
-        ↓
-Recruiter makes decision → passed / failed (seeker notified)
-        ↓
-Recruiter schedules real interview (date, location, notes)
-        ↓
-Seeker receives in-app notification + email with full details
-```
-
-**Supported interview tracks:** `Frontend` · `Backend` · `AI Engineering` · `Data Engineering`
-
 ---
 
 ## Key Features
@@ -150,7 +106,3 @@ src/
 | `seeker` | Apply to jobs, take AI interviews, view schedule, enroll in courses |
 | `recruiter` | Post jobs, review applicants, review AI reports, schedule interviews |
 | `admin` | Full platform management, analytics, course management |
-
----
-
-*Built with ❤️ as a graduation project — RevUp Team*
