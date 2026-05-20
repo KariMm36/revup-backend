@@ -128,63 +128,71 @@ exports.submitInterview = async (req, res, next) => {
       total_score: totalScore,
     });
 
-    // ── Smart Recruiter Notification ────────────────────────────────────────
-    // Only notify recruiters from companies the seeker has applied to,
-    // not every single recruiter on the platform.
-    const seekerApplications = await Application.findAll({
-      where: { seeker_id: req.user.id },
-      include: [{
-        model: Job,
-        as: 'job',
-        attributes: ['company_id'],
-      }],
-    });
-
-    const companyIds = [...new Set(
-      seekerApplications
-        .filter(app => app.job)
-        .map(app => app.job.company_id)
-    )];
-
-    let recruiters = [];
-    if (companyIds.length > 0) {
-      // Find recruiters belonging to those companies
-      recruiters = await User.findAll({
-        where: {
-          role: 'recruiter',
-          company_id: { [Op.in]: companyIds },
-        },
-        attributes: ['id'],
-      });
-    }
-
-    // Fallback: if seeker hasn't applied anywhere yet, notify all recruiters
-    if (recruiters.length === 0) {
-      recruiters = await User.findAll({
-        where: { role: 'recruiter' },
-        attributes: ['id'],
-      });
-    }
-
-    const notifications = recruiters.map((recruiter) => ({
-      user_id: recruiter.id,
-      message: `${req.user.name} has completed their AI interview for the ${interview.track} track. Score: ${totalScore ?? 'N/A'}%. Please review their results.`,
-    }));
-    if (notifications.length > 0) {
-      await Notification.bulkCreate(notifications);
-    }
-
-    return res.status(200).json({
+    // ── Respond immediately — don't make the user wait for notifications ─────
+    res.status(200).json({
       success: true,
       message: 'Interview submitted successfully! Your results are under review.',
       data: {
         interview_id: interview.id,
-        track: interview.track,
-        status: 'submitted',
-        total_score: totalScore,
-        report: aiReport.report,
+        track:        interview.track,
+        status:       'submitted',
+        total_score:  totalScore,
+        report:       aiReport.report,
       },
     });
+
+    // ── Smart Recruiter Notification (background) ─────────────────────────────
+    // Deferred with setImmediate so it never adds latency to the user response.
+    const seekerId   = req.user.id;
+    const seekerName = req.user.name;
+    const track      = interview.track;
+
+    setImmediate(async () => {
+      try {
+        const seekerApplications = await Application.findAll({
+          where: { seeker_id: seekerId },
+          include: [{ model: Job, as: 'job', attributes: ['company_id'] }],
+        });
+
+        const companyIds = [...new Set(
+          seekerApplications
+            .filter((app) => app.job)
+            .map((app) => app.job.company_id)
+        )];
+
+        let recruiters = [];
+        if (companyIds.length > 0) {
+          recruiters = await User.findAll({
+            where: { role: 'recruiter', company_id: { [Op.in]: companyIds } },
+            attributes: ['id'],
+          });
+        }
+
+        // Fallback: notify all recruiters if seeker hasn't applied anywhere
+        if (recruiters.length === 0) {
+          recruiters = await User.findAll({
+            where: { role: 'recruiter' },
+            attributes: ['id'],
+          });
+        }
+
+        const notifications = recruiters.map((recruiter) => ({
+          user_id: recruiter.id,
+          message: `${seekerName} has completed their AI interview for the ${track} track. Score: ${
+            totalScore ?? 'N/A'
+          }%. Please review their results.`,
+        }));
+
+        if (notifications.length > 0) {
+          await Notification.bulkCreate(notifications);
+        }
+
+        console.log(`[submitInterview] Notifications sent for seeker ${seekerId}`);
+      } catch (notifyErr) {
+        console.error('[submitInterview] Background notification error:', notifyErr.message);
+      }
+    });
+
   } catch (err) {
     next(err);
   }

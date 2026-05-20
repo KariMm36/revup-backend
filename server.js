@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const app = require('./src/app');
 const sequelize = require('./src/config/db');
+const aiService = require('./src/services/aiService');
 
 const PORT = process.env.PORT || 5000;
 
@@ -27,6 +28,10 @@ const start = async () => {
       console.log('\n    RevUp API is live');
       console.log(`    http://localhost:${PORT}`);
       console.log(`    http://localhost:${PORT}/api-docs\n`);
+
+      // Pre-warm Railway AI containers so the first real user request
+      // doesn't hit a cold-start delay (fire-and-forget, never throws).
+      aiService.warmUp();
     });
   } catch (err) {
     console.error('    Failed to start server:', err.message || err);
