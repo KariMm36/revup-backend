@@ -68,9 +68,79 @@ exports.uploadResume = async (req, res, next) => {
     }
 
     const user = await User.findByPk(req.user.id);
+    let aiProfile = null;
 
-    // ─── Step 1: Upload to Cloudinary FIRST (fast) ───────────────────────────
-    // We do this before the AI so the user gets a fast response.
+    // ─── AI CV Parsing Integration ───────────────────────────────────────────
+    try {
+      // 1. Send CV buffer to AI for parsing BEFORE uploading to Cloudinary
+      aiProfile = await aiService.parseCV(req.file.buffer, req.file.originalname);
+      
+      // 2. Update user bio and phone if AI extracted them
+      const profileUpdates = {};
+      if (aiProfile.summary)  profileUpdates.bio      = aiProfile.summary;
+      if (aiProfile.phone)    profileUpdates.phone    = aiProfile.phone;
+      if (aiProfile.location) profileUpdates.location = aiProfile.location;
+      if (Object.keys(profileUpdates).length > 0) {
+        await user.update(profileUpdates);
+      }
+
+      // 3. Match extracted skills to our Skills table
+      if (aiProfile.skills && Array.isArray(aiProfile.skills) && aiProfile.skills.length > 0) {
+        const matchedSkills = await Skill.findAll({
+          where: { name: { [Op.in]: aiProfile.skills } }
+        });
+
+        if (matchedSkills.length > 0) {
+          await user.setSkills(matchedSkills);
+        }
+      }
+
+      // 4. Save Experience, Education, and Certifications
+      // Clear old data first to prevent duplicates
+      await Experience.destroy({ where: { user_id: user.id } });
+      await Education.destroy({ where: { user_id: user.id } });
+      await Certification.destroy({ where: { user_id: user.id } });
+
+      if (aiProfile.experience && Array.isArray(aiProfile.experience) && aiProfile.experience.length > 0) {
+        await Experience.bulkCreate(
+          aiProfile.experience.map(e => ({
+            user_id: user.id,
+            title: e.title || 'Unknown Role',
+            company: e.company || '',
+            duration: e.duration || '',
+            description: e.description || ''
+          }))
+        );
+      }
+
+      if (aiProfile.education && Array.isArray(aiProfile.education) && aiProfile.education.length > 0) {
+        await Education.bulkCreate(
+          aiProfile.education.map(e => ({
+            user_id: user.id,
+            degree: e.degree || 'Unknown Degree',
+            university: e.university || '',
+            duration: e.duration || ''
+          }))
+        );
+      }
+
+      if (aiProfile.certifications && Array.isArray(aiProfile.certifications) && aiProfile.certifications.length > 0) {
+        await Certification.bulkCreate(
+          aiProfile.certifications.map(c => ({
+            user_id: user.id,
+            name: c.name || 'Unknown Certification',
+            organization: c.organization || '',
+            year: c.year || ''
+          }))
+        );
+      }
+
+    } catch (parseError) {
+      console.error('CV Parsing failed, but upload will continue:', parseError);
+    }
+
+    // ─── Cloudinary Upload ───────────────────────────────────────────────────
+    // 4. Manually upload the buffer to Cloudinary (raw resource type for PDF)
     const resumeUrl = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.uploader.upload_stream(
         { folder: 'revup/resumes', resource_type: 'raw' },
@@ -84,91 +154,25 @@ exports.uploadResume = async (req, res, next) => {
       bufferStream.pipe(uploadStream);
     });
 
+    // 5. Update user with new resume URL
     await user.update({ resume_url: resumeUrl });
 
-    // ─── Step 2: Respond to the user IMMEDIATELY ─────────────────────────────
-    // AI parsing happens in the background — user doesn't wait 30-60s.
-    res.status(200).json({
-      success: true,
-      message: 'Resume uploaded! Your profile is being updated in the background.',
-      data: { resume_url: resumeUrl },
+    // 6. Fetch updated user profile with all data to return
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: ['id', 'name', 'email', 'phone', 'location', 'bio', 'resume_url'],
+      include: [
+        { model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } },
+        { model: Experience, as: 'experience' },
+        { model: Education, as: 'education' },
+        { model: Certification, as: 'certifications' }
+      ],
     });
 
-    // ─── Step 3: Parse CV in background (non-blocking) ───────────────────────
-    // setImmediate pushes this to the next event-loop tick, fully async.
-    const fileBuffer   = req.file.buffer;
-    const originalName = req.file.originalname;
-    const userId       = user.id;
-
-    setImmediate(async () => {
-      try {
-        const aiProfile = await aiService.parseCV(fileBuffer, originalName);
-
-        // Re-fetch user to avoid stale reference
-        const freshUser = await User.findByPk(userId);
-
-        // Update bio, phone, location
-        const profileUpdates = {};
-        if (aiProfile.summary)  profileUpdates.bio      = aiProfile.summary;
-        if (aiProfile.phone)    profileUpdates.phone    = aiProfile.phone;
-        if (aiProfile.location) profileUpdates.location = aiProfile.location;
-        if (Object.keys(profileUpdates).length > 0) {
-          await freshUser.update(profileUpdates);
-        }
-
-        // Match extracted skills
-        if (aiProfile.skills && Array.isArray(aiProfile.skills) && aiProfile.skills.length > 0) {
-          const matchedSkills = await Skill.findAll({
-            where: { name: { [Op.in]: aiProfile.skills } },
-          });
-          if (matchedSkills.length > 0) {
-            await freshUser.setSkills(matchedSkills);
-          }
-        }
-
-        // Clear old structured data and re-insert
-        await Experience.destroy({ where: { user_id: userId } });
-        await Education.destroy({ where: { user_id: userId } });
-        await Certification.destroy({ where: { user_id: userId } });
-
-        if (aiProfile.experience?.length > 0) {
-          await Experience.bulkCreate(
-            aiProfile.experience.map((e) => ({
-              user_id:     userId,
-              title:       e.title       || 'Unknown Role',
-              company:     e.company     || '',
-              duration:    e.duration    || '',
-              description: e.description || '',
-            }))
-          );
-        }
-
-        if (aiProfile.education?.length > 0) {
-          await Education.bulkCreate(
-            aiProfile.education.map((e) => ({
-              user_id:    userId,
-              degree:     e.degree     || 'Unknown Degree',
-              university: e.university || '',
-              duration:   e.duration   || '',
-            }))
-          );
-        }
-
-        if (aiProfile.certifications?.length > 0) {
-          await Certification.bulkCreate(
-            aiProfile.certifications.map((c) => ({
-              user_id:      userId,
-              name:         c.name         || 'Unknown Certification',
-              organization: c.organization || '',
-              year:         c.year         || '',
-            }))
-          );
-        }
-
-        console.log(`[uploadResume] Background AI parsing complete for user ${userId}`);
-      } catch (parseError) {
-        console.error(`[uploadResume] Background AI parsing failed for user ${userId}:`, parseError.message);
-      }
+    return res.status(200).json({ 
+      success: true, 
+      message: aiProfile ? 'Resume uploaded and parsed successfully.' : 'Resume uploaded, but AI parsing failed.', 
+      data: updatedUser,
+      ai_raw_profile: aiProfile || null
     });
 
   } catch (err) {
