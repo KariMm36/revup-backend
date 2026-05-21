@@ -28,6 +28,11 @@ const passport = require('./config/passport'); // registers OAuth strategies
 
 const app = express();
 
+// ─── Trust Proxy (required for deployments behind reverse proxies) ────────────
+// Enables express-rate-limit to correctly read X-Forwarded-For header
+// Set to 1 to trust the first proxy hop (Render, Railway, Heroku, etc.)
+app.set('trust proxy', 1);
+
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
 
