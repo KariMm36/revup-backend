@@ -2,7 +2,7 @@
 
 const axios = require('axios');
 const { Op } = require('sequelize');
-const { Interview, User, Notification, Application, Job } = require('../models');
+const { Interview, User, Notification, Application, Job, Company } = require('../models');
 
 const AI_API_BASE = 'https://interview-production-ee82.up.railway.app';
 
@@ -252,6 +252,19 @@ exports.getApplicantInterview = async (req, res, next) => {
       attributes: ['id', 'name', 'email', 'profile_pic'],
     });
     if (!seeker) return res.status(404).json({ success: false, message: 'Seeker not found.' });
+
+    // Privacy guard: support both company owner and assigned recruiter
+    let company = await Company.findOne({ where: { recruiter_id: req.user.id } });
+    if (!company && req.user.company_id) {
+      company = await Company.findByPk(req.user.company_id);
+    }
+    if (!company) return res.status(403).json({ success: false, message: 'You are not associated with any company.' });
+
+    const recruiterJobIds = (await Job.findAll({ where: { company_id: company.id }, attributes: ['id'] })).map(j => j.id);
+    if (recruiterJobIds.length === 0) return res.status(403).json({ success: false, message: 'Access denied.' });
+
+    const hasApplied = await Application.findOne({ where: { seeker_id: seekerId, job_id: recruiterJobIds } });
+    if (!hasApplied) return res.status(403).json({ success: false, message: 'You can only view interviews of seekers who applied to your jobs.' });
 
     // Get their most recent submitted interview (or all)
     const interviews = await Interview.findAll({

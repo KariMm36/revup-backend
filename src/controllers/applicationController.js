@@ -1,6 +1,6 @@
 'use strict';
 
-const { Application, Job, Company, User, Notification } = require('../models');
+const { Application, Job, Company, User, Notification, Skill } = require('../models');
 const { sendApplicationStatusEmail } = require('../services/emailService');
 
 // ── Helper: check if recruiter has access to a company ───────────────────────
@@ -82,7 +82,12 @@ exports.getApplicationById = async (req, res, next) => {
     const application = await Application.findByPk(req.params.id, {
       include: [
         { model: Job, as: 'job', include: [{ model: Company, as: 'company' }] },
-        { model: User, as: 'seeker', attributes: { exclude: ['password', 'reset_token', 'reset_token_expiry'] } },
+        { 
+          model: User, 
+          as: 'seeker', 
+          attributes: { exclude: ['password', 'reset_token', 'reset_token_expiry'] },
+          include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }]
+        },
       ],
     });
     if (!application) return res.status(404).json({ success: false, message: 'Application not found.' });

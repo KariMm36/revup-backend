@@ -301,7 +301,12 @@ exports.getSeekerProfile = async (req, res, next) => {
     // Confirm the target user exists and is a seeker
     const seeker = await User.findByPk(seekerId, {
       attributes: { exclude: ['password', 'reset_token', 'reset_token_expiry'] },
-      include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
+      include: [
+        { model: Skill,         as: 'skills',         attributes: ['id', 'name'], through: { attributes: [] } },
+        { model: Experience,    as: 'experience' },
+        { model: Education,     as: 'education' },
+        { model: Certification, as: 'certifications' },
+      ],
     });
     if (!seeker) return res.status(404).json({ success: false, message: 'User not found.' });
     if (seeker.role !== 'seeker') return res.status(403).json({ success: false, message: 'This profile is not a seeker.' });
