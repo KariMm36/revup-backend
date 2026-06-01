@@ -12,11 +12,12 @@ const start = async () => {
     await sequelize.authenticate();
     
     const {
-      User, Experience, Education, Certification,
+      User, RefreshToken, Experience, Education, Certification,
       Interview, InterviewSchedule,
     } = require('./src/models');
 
     await User.sync({ alter: true });
+    await RefreshToken.sync({ alter: true });
     await Experience.sync({ alter: true });
     await Education.sync({ alter: true });
     await Certification.sync({ alter: true });

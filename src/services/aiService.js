@@ -8,11 +8,11 @@ const FormData = require('form-data');
  */
 
 // If env var is not set, fallback to the known Railway URL
-const AI_BASE_URL = process.env.AI_API_URL || 'https://recommend-for-the-website-production.up.railway.app';
+const AI_BASE_URL = process.env.AI_API_URL || 'https://cvparser-with-recommendation-production.up.railway.app';
 
 exports.getJobRecommendations = async (profileData) => {
   try {
-    const aiUrl = 'https://cvparser-with-recommendation-production.up.railway.app/api/v1/recommend-jobs';
+    const aiUrl = `${AI_BASE_URL}/api/v1/recommend-jobs`;
     const response = await axios.post(aiUrl, {
       skills: profileData.skills || [],
       title: profileData.title || '',
@@ -43,7 +43,7 @@ exports.parseCV = async (fileBuffer, originalName) => {
     });
 
     // 2. Post to AI API
-    const aiUrl = 'https://cvparser-with-recommendation-production.up.railway.app/api/v1/upload-cv';
+    const aiUrl = `${AI_BASE_URL}/api/v1/upload-cv`;
     const response = await axios.post(aiUrl, form, {
       headers: {
         ...form.getHeaders(),
