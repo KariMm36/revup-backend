@@ -6,6 +6,8 @@ const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const path = require('path');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -36,19 +38,29 @@ app.set('trust proxy', 1);
 // ─── Security Middleware ─────────────────────────────────────────────────────
 app.use(helmet());
 
-// ─── CORS — Allow frontend to send Authorization headers (OPTIONS preflight) ──
+// ─── CORS — Allow frontend to send Authorization headers & Cookies ──
 const corsOptions = {
-  origin: '*',
+  origin: process.env.FRONTEND_URL || '*',
+  credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 app.use(cors(corsOptions));
 
+// ─── Global Rate Limiting ────────────────────────────────────────────────────
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes.' }
+});
+app.use('/api', globalLimiter);
+
 app.use(passport.initialize()); // OAuth — no sessions needed (JWT-based)
 
-// ─── Body Parsers ────────────────────────────────────────────────────────────
+// ─── Body Parsers & Cookie Parser ────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // ─── Static File Serving (Uploads) ──────────────────────────────────────────
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));

@@ -12,6 +12,13 @@ const {
   resetPasswordRules, updatePasswordRules,
 } = require('../validators/authValidators');
 
+const rateLimit = require('express-rate-limit');
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { success: false, message: 'Too many attempts from this IP, please try again after 15 minutes.' }
+});
+
 /**
  * @openapi
  * tags:
@@ -42,7 +49,7 @@ const {
  *       409: { description: Email already registered }
  *       422: { description: Validation error }
  */
-router.post('/register', registerRules, validate, authController.register);
+router.post('/register', authLimiter, registerRules, validate, authController.register);
 
 /**
  * @openapi
@@ -57,6 +64,29 @@ router.post('/register', registerRules, validate, authController.register);
  *       401: { description: Unauthorized }
  */
 router.get('/me', protect, authController.getMe);
+
+/**
+ * @openapi
+ * /api/auth/refresh:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Refresh access token using HTTP-only cookie
+ *     responses:
+ *       200: { description: New access token issued }
+ *       401: { description: Invalid or expired refresh token }
+ */
+router.post('/refresh', authLimiter, authController.refreshToken);
+
+/**
+ * @openapi
+ * /api/auth/logout:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Logout and clear refresh token
+ *     responses:
+ *       200: { description: Logged out }
+ */
+router.post('/logout', authLimiter, authController.logout);
 
 /**
  * @openapi
@@ -78,7 +108,7 @@ router.get('/me', protect, authController.getMe);
  *       200: { description: Logged in }
  *       401: { description: Invalid credentials }
  */
-router.post('/login', loginRules, validate, authController.login);
+router.post('/login', authLimiter, loginRules, validate, authController.login);
 
 /**
  * @openapi
@@ -98,7 +128,7 @@ router.post('/login', loginRules, validate, authController.login);
  *     responses:
  *       200: { description: Reset link sent if email exists }
  */
-router.post('/forgot-password', forgotPasswordRules, validate, authController.forgotPassword);
+router.post('/forgot-password', authLimiter, forgotPasswordRules, validate, authController.forgotPassword);
 
 /**
  * @openapi
@@ -124,7 +154,7 @@ router.post('/forgot-password', forgotPasswordRules, validate, authController.fo
  *       200: { description: Password reset }
  *       400: { description: Invalid or expired token }
  */
-router.put('/reset-password/:token', resetPasswordRules, validate, authController.resetPassword);
+router.put('/reset-password/:token', authLimiter, resetPasswordRules, validate, authController.resetPassword);
 
 /**
  * @openapi

@@ -2,6 +2,7 @@
 
 // ─── Phase 1 & 2 Models ───────────────────────────────────────────────────────
 const User            = require('./User');
+const RefreshToken    = require('./RefreshToken');
 const Company         = require('./Company');
 const Job             = require('./Job');
 const Skill           = require('./Skill');
@@ -29,6 +30,10 @@ const InterviewSchedule   = require('./InterviewSchedule');
 // ═══════════════════════════════════════════════════════════════════════════════
 // ASSOCIATIONS — Phase 1 & 2
 // ═══════════════════════════════════════════════════════════════════════════════
+
+// ─── User <-> RefreshToken ────────────────────────────────────────────────────
+User.hasMany(RefreshToken, { foreignKey: 'user_id', as: 'refreshTokens', onDelete: 'CASCADE' });
+RefreshToken.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // ─── User <-> Company (Owner) ─────────────────────────────────────────────────
 // The recruiter_id on Company is the OWNER who created the company.
@@ -133,6 +138,7 @@ InterviewSchedule.belongsTo(User, { foreignKey: 'recruiter_id', as: 'recruiter' 
 // ═══════════════════════════════════════════════════════════════════════════════
 module.exports = {
   User,
+  RefreshToken,
   Company,
   Job,
   Skill,

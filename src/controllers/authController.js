@@ -3,14 +3,25 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
-const { User } = require('../models');
+const { User, RefreshToken } = require('../models');
 const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 const generateToken = (user) =>
-  jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  jwt.sign({ id: user.id, role: user.role, tokenVersion: user.token_version }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRES_IN || '15m',
   });
+
+const generateRefreshToken = async (user) => {
+  const token = uuidv4();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  await RefreshToken.create({
+    token,
+    user_id: user.id,
+    expires_at: expiresAt,
+  });
+  return token;
+};
 
 // POST /api/auth/register
 exports.register = async (req, res, next) => {
@@ -27,6 +38,14 @@ exports.register = async (req, res, next) => {
     sendWelcomeEmail({ to: email, name }).catch(console.error);
 
     const token = generateToken(user);
+    const refreshToken = await generateRefreshToken(user);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return res.status(201).json({
       success: true,
       message: 'Account created successfully.',
@@ -54,6 +73,14 @@ exports.login = async (req, res, next) => {
     }
 
     const token = generateToken(user);
+    const refreshToken = await generateRefreshToken(user);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
     return res.status(200).json({
       success: true,
       message: 'Logged in successfully.',
@@ -106,7 +133,7 @@ exports.resetPassword = async (req, res, next) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
-    await user.update({ password: hashedPassword, reset_token: null, reset_token_expiry: null });
+    await user.update({ password: hashedPassword, reset_token: null, reset_token_expiry: null, token_version: user.token_version + 1 });
 
     return res.status(200).json({ success: true, message: 'Password has been reset successfully. Please login.' });
   } catch (err) {
@@ -124,7 +151,7 @@ exports.updatePassword = async (req, res, next) => {
     if (!isMatch) return res.status(400).json({ success: false, message: 'Current password is incorrect.' });
 
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-    await user.update({ password: hashedPassword });
+    await user.update({ password: hashedPassword, token_version: user.token_version + 1 });
 
     return res.status(200).json({ success: true, message: 'Password updated successfully.' });
   } catch (err) {
@@ -142,10 +169,50 @@ exports.getMe = async (req, res, next) => {
   }
 };
 
+// POST /api/auth/refresh
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.cookies;
+    if (!refreshToken) {
+      return res.status(401).json({ success: false, message: 'No refresh token provided.' });
+    }
+
+    const savedToken = await RefreshToken.findOne({ where: { token: refreshToken } });
+    if (!savedToken || savedToken.expires_at < new Date()) {
+      if (savedToken) await savedToken.destroy(); // clean up expired
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token. Please login again.' });
+    }
+
+    const user = await User.findByPk(savedToken.user_id);
+    if (!user || user.status === 'suspended') {
+      return res.status(401).json({ success: false, message: 'User invalid or suspended.' });
+    }
+
+    const newAccessToken = generateToken(user);
+    return res.status(200).json({ success: true, token: newAccessToken });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/auth/logout
+exports.logout = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.cookies;
+    if (refreshToken) {
+      await RefreshToken.destroy({ where: { token: refreshToken } });
+    }
+    res.clearCookie('refreshToken');
+    return res.status(200).json({ success: true, message: 'Logged out successfully.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ─── OAuth Callback (used by both Google & GitHub) ────────────────────────────
 // Called by passport after successful provider auth.
 // Issues a short-lived JWT and redirects to the frontend.
-exports.oauthCallback = (req, res) => {
+exports.oauthCallback = async (req, res) => {
   const user = req.user; // set by passport
 
   if (user.status === 'suspended') {
@@ -155,6 +222,14 @@ exports.oauthCallback = (req, res) => {
   }
 
   const token = generateToken(user);
+  const refreshToken = await generateRefreshToken(user);
+  
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax', // 'lax' is required for OAuth cross-domain redirect
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
   const isNew = user.role === 'pending'; // brand-new OAuth user needs role selection
 
   // Redirect to frontend with token (and flag if role selection is needed)
@@ -194,6 +269,14 @@ exports.completeProfile = async (req, res, next) => {
 
     // Issue a fresh token with the real role embedded
     const token = generateToken(user);
+    const refreshToken = await generateRefreshToken(user);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
 
     sendWelcomeEmail({ to: user.email, name: user.name }).catch(console.error);
 

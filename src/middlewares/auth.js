@@ -25,6 +25,10 @@ const protect = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Token is invalid. User not found.' });
     }
 
+    if (decoded.tokenVersion !== user.token_version) {
+      return res.status(401).json({ success: false, message: 'Token has been invalidated. Please login again.' });
+    }
+
     if (user.status === 'suspended') {
       return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact support.' });
     }
