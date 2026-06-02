@@ -33,7 +33,7 @@ const start = async () => {
       logger.info(`    http://localhost:${PORT}/api-docs\n`);
     });
   } catch (err) {
-    logger.error('Failed to start server:', err.message || err);
+    logger.error('Failed to start server: ' + (err.stack || err.message || String(err)));
     process.exit(1);
   }
 };

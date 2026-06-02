@@ -1,6 +1,7 @@
 'use strict';
 
 const { Queue, Worker } = require('bullmq');
+const Redis = require('ioredis');
 const transporter = require('../config/mailer');
 const logger = require('../config/logger');
 
@@ -11,16 +12,23 @@ if (!process.env.REDIS_URL) {
   return;
 }
 
-const connection = { url: process.env.REDIS_URL };
+// Use an ioredis instance — BullMQ requires maxRetriesPerRequest: null
+const connection = new Redis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: null,
+  enableReadyCheck: false,
+});
+
+connection.on('connect', () => logger.info('[EmailQueue] Redis connected'));
+connection.on('error', (err) => logger.error(`[EmailQueue] Redis error: ${err.message}`));
 
 // ─── Queue ────────────────────────────────────────────────────────────────────
 const emailQueue = new Queue('emails', {
   connection,
   defaultJobOptions: {
-    attempts: 3,                          // retry up to 3 times on failure
-    backoff: { type: 'exponential', delay: 5000 }, // wait 5s, 10s, 20s between retries
-    removeOnComplete: 100,                // keep last 100 completed jobs
-    removeOnFail: 50,                     // keep last 50 failed jobs for debugging
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: 100,
+    removeOnFail: 50,
   },
 });
 
@@ -28,10 +36,8 @@ const emailQueue = new Queue('emails', {
 const emailWorker = new Worker('emails', async (job) => {
   const { type, payload } = job.data;
   logger.info(`[EmailQueue] Processing job: ${type} → ${payload.to}`);
-
   await transporter.sendMail(payload);
   logger.info(`[EmailQueue] Email sent: ${type} → ${payload.to}`);
-
 }, { connection });
 
 emailWorker.on('failed', (job, err) => {
