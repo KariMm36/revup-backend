@@ -5,27 +5,28 @@ require('dotenv').config();
 const app = require('./src/app');
 const sequelize = require('./src/config/db');
 const logger = require('./src/config/logger');
-// Initialize email queue worker (starts listening for jobs)
-require('./src/queues/emailQueue');
 
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
   try {
     await sequelize.authenticate();
-    
+    logger.info('[DB] Connected to database');
+
     const {
       User, RefreshToken, Experience, Education, Certification,
       Interview, InterviewSchedule,
     } = require('./src/models');
 
-    await User.sync({ alter: true });
-    await RefreshToken.sync({ alter: true });
-    await Experience.sync({ alter: true });
-    await Education.sync({ alter: true });
-    await Certification.sync({ alter: true });
-    await Interview.sync({ alter: true });
-    await InterviewSchedule.sync({ alter: true });
+    // Sync each table individually so one failure doesn't crash the whole server
+    const models = { User, RefreshToken, Experience, Education, Certification, Interview, InterviewSchedule };
+    for (const [name, model] of Object.entries(models)) {
+      try {
+        await model.sync({ alter: true });
+      } catch (syncErr) {
+        logger.warn(`[DB] Could not sync ${name}: ${syncErr.message}`);
+      }
+    }
 
     app.listen(PORT, () => {
       logger.info(`\n    RevUp API is live`);
