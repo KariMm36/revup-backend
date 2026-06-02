@@ -1,11 +1,13 @@
 'use strict';
 
+const logger = require('../config/logger');
+
 /*
   Global Express error handler
   Handles Sequelize, JWT, Multer, and general errors with clean JSON responses
 */
 const errorHandler = (err, req, res, next) => {
-  console.error(`[ERROR] ${err.name}: ${err.message}`);
+  logger.error(`${err.name}: ${err.message}`, { stack: err.stack });
 
   // ─── Sequelize Unique Constraint ─────────────────────────────────────────
   if (err.name === 'SequelizeUniqueConstraintError') {

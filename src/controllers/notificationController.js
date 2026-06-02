@@ -1,6 +1,30 @@
 'use strict';
 
 const { Notification } = require('../models');
+const { getIo } = require('../config/socket');
+const logger = require('../config/logger');
+
+/**
+ * Internal helper — create a notification and push it to the user in real-time
+ * Usage: createNotification({ userId, message, type })
+ */
+exports.createNotification = async ({ userId, message, type = 'info' }) => {
+  try {
+    const notification = await Notification.create({ user_id: userId, message, type });
+    const io = getIo();
+    if (io) {
+      io.to(`user:${userId}`).emit('notification', {
+        id: notification.id,
+        message,
+        type,
+        createdAt: notification.createdAt,
+      });
+    }
+    return notification;
+  } catch (err) {
+    logger.error(`[Notification] Failed to create notification for user ${userId}: ${err.message}`);
+  }
+};
 
 // GET /api/notifications
 exports.getNotifications = async (req, res, next) => {

@@ -1,12 +1,23 @@
 'use strict';
 
 const transporter = require('../config/mailer');
+const { addToEmailQueue } = require('../queues/emailQueue');
+const logger = require('../config/logger');
+
+// Helper: send via queue if available, otherwise send inline
+const send = async (payload) => {
+  if (addToEmailQueue) {
+    await addToEmailQueue('send', payload);
+  } else {
+    await transporter.sendMail(payload);
+  }
+};
 
 /**
  * Send a Welcome email on registration
  */
 const sendWelcomeEmail = async ({ to, name }) => {
-  await transporter.sendMail({
+  await send({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
     subject: ' Welcome to RevUp!',
@@ -26,7 +37,7 @@ const sendWelcomeEmail = async ({ to, name }) => {
  */
 const sendPasswordResetEmail = async ({ to, name, resetToken }) => {
   const resetUrl = `${process.env.CLIENT_URL}/api/auth/reset-password/${resetToken}`;
-  await transporter.sendMail({
+  await send({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
     subject: ' RevUp — Password Reset Request',
@@ -56,7 +67,7 @@ const sendApplicationStatusEmail = async ({ to, seekerName, jobTitle, companyNam
 
   const config = statusConfig[newStatus] || statusConfig['applied'];
 
-  await transporter.sendMail({
+  await send({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
     subject: `${config.emoji} Application Update — ${jobTitle} at ${companyName}`,
@@ -85,7 +96,7 @@ const sendInterviewScheduleEmail = async ({ to, seekerName, track, scheduledAt, 
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
   });
 
-  await transporter.sendMail({
+  await send({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
     subject: `🗓️ Your ${track} Interview Has Been Scheduled — RevUp`,
@@ -123,7 +134,7 @@ const sendInterviewCancelledEmail = async ({ to, seekerName, track, scheduledAt,
     hour: '2-digit', minute: '2-digit',
   });
 
-  await transporter.sendMail({
+  await send({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
     subject: `❌ Interview Cancelled — ${track} — RevUp`,

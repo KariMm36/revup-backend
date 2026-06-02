@@ -2,12 +2,23 @@
 
 require('dotenv').config();
 
+// ─── Sentry (must be initialized before everything else) ───────────────────────────
+const Sentry = require('@sentry/node');
+if (process.env.SENTRY_DSN) {
+  Sentry.init({
+    dsn: process.env.SENTRY_DSN,
+    environment: process.env.NODE_ENV || 'development',
+    tracesSampleRate: 1.0,
+  });
+}
+
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
+const requestLogger = require('./middlewares/requestLogger');
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./config/swagger');
@@ -47,13 +58,16 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 
-// ─── Global Rate Limiting ────────────────────────────────────────────────────
+// ─── Global Rate Limiting (dynamic via GLOBAL_RATE_LIMIT_MAX env var) ───────────
 const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes.' }
+  windowMs: 15 * 60 * 1000,
+  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX) || 100,
+  message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes.' },
 });
 app.use('/api', globalLimiter);
+
+// ─── Request Logger ──────────────────────────────────────────────────────────────
+app.use(requestLogger);
 
 app.use(passport.initialize()); // OAuth — no sessions needed (JWT-based)
 
@@ -106,7 +120,12 @@ app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found.' });
 });
 
-// ─── Global Error Handler ────────────────────────────────────────────────────
+// ─── Sentry Error Handler (must come before custom error handler) ─────────────────
+if (process.env.SENTRY_DSN) {
+  app.use(Sentry.expressErrorHandler());
+}
+
+// ─── Global Error Handler ────────────────────────────────────────────────────────────
 app.use(errorHandler);
 
 module.exports = app;

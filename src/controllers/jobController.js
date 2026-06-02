@@ -51,6 +51,24 @@ exports.getAllJobs = async (req, res, next) => {
   }
 };
 
+// GET /api/jobs/all — slim version for chatbot (returns essential fields only)
+exports.getAllJobsSlim = async (req, res, next) => {
+  try {
+    const jobs = await Job.findAll({
+      where: { status: 'open' },
+      attributes: ['id', 'title', 'description', 'location', 'job_type', 'salary_range'],
+      include: [
+        { model: Company, as: 'company', attributes: ['name'] },
+        { model: Skill,   as: 'skills',  attributes: ['name'], through: { attributes: [] } },
+      ],
+      order: [['createdAt', 'DESC']],
+    });
+    return res.status(200).json({ success: true, count: jobs.length, data: jobs });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // GET /api/jobs/latest — top 5 newest open jobs
 exports.getLatestJobs = async (req, res, next) => {
   try {

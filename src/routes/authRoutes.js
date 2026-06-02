@@ -13,10 +13,12 @@ const {
 } = require('../validators/authValidators');
 
 const rateLimit = require('express-rate-limit');
+// AUTH_RATE_LIMIT_MAX can be set in Railway to a high value during testing (e.g. 100)
+// and reset to 10 when going to production
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { success: false, message: 'Too many attempts from this IP, please try again after 15 minutes.' }
+  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+  message: { success: false, message: 'Too many attempts from this IP, please try again after 15 minutes.' },
 });
 
 /**

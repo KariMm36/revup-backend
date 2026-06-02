@@ -2,10 +2,17 @@
 
 require('dotenv').config();
 
+const http = require('http');
 const app = require('./src/app');
 const sequelize = require('./src/config/db');
+const { initSocket } = require('./src/config/socket');
+const logger = require('./src/config/logger');
+// Initialize email queue worker (starts listening for jobs)
+require('./src/queues/emailQueue');
 
 const PORT = process.env.PORT || 5000;
+const httpServer = http.createServer(app);
+initSocket(httpServer);
 
 const start = async () => {
   try {
@@ -24,13 +31,13 @@ const start = async () => {
     await Interview.sync({ alter: true });
     await InterviewSchedule.sync({ alter: true });
 
-    app.listen(PORT, () => {
-      console.log('\n    RevUp API is live');
-      console.log(`    http://localhost:${PORT}`);
-      console.log(`    http://localhost:${PORT}/api-docs\n`);
+    httpServer.listen(PORT, () => {
+      logger.info(`\n    RevUp API is live`);
+      logger.info(`    http://localhost:${PORT}`);
+      logger.info(`    http://localhost:${PORT}/api-docs\n`);
     });
   } catch (err) {
-    console.error('    Failed to start server:', err.message || err);
+    logger.error('Failed to start server:', err.message || err);
     process.exit(1);
   }
 };

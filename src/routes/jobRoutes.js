@@ -7,6 +7,7 @@ const jobController = require('../controllers/jobController');
 const { protect, authorize } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
 const { createJobRules, updateJobRules } = require('../validators/jobValidators');
+const { cache } = require('../middlewares/cache');
 
 /**
  * @openapi
@@ -26,7 +27,20 @@ const { createJobRules, updateJobRules } = require('../validators/jobValidators'
  *     responses:
  *       200: { description: Latest jobs }
  */
-router.get('/latest', jobController.getLatestJobs);
+router.get('/latest', cache(120), jobController.getLatestJobs);
+
+/**
+ * @openapi
+ * /api/jobs/all:
+ *   get:
+ *     tags: [Jobs]
+ *     summary: Get ALL jobs (slim fields — for chatbot/AI use only)
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: All jobs slim data }
+ */
+router.get('/all', protect, cache(600), jobController.getAllJobsSlim);
 
 /**
  * @openapi
@@ -101,7 +115,7 @@ router.get('/my-postings', protect, authorize('recruiter'), jobController.getMyP
  *     responses:
  *       201: { description: Job created }
  */
-router.get('/',  jobController.getAllJobs);
+router.get('/', cache(300), jobController.getAllJobs);
 router.post('/', protect, authorize('recruiter'), createJobRules, validate, jobController.createJob);
 
 /**
