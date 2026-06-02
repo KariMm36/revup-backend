@@ -29,18 +29,6 @@ const { cache } = require('../middlewares/cache');
  */
 router.get('/latest', cache(120), jobController.getLatestJobs);
 
-/**
- * @openapi
- * /api/jobs/all:
- *   get:
- *     tags: [Jobs]
- *     summary: Get ALL jobs (slim fields — for chatbot/AI use only)
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200: { description: All jobs slim data }
- */
-router.get('/all', protect, cache(600), jobController.getAllJobsSlim);
 
 /**
  * @openapi

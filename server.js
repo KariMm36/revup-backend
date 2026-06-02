@@ -2,17 +2,13 @@
 
 require('dotenv').config();
 
-const http = require('http');
 const app = require('./src/app');
 const sequelize = require('./src/config/db');
-const { initSocket } = require('./src/config/socket');
 const logger = require('./src/config/logger');
 // Initialize email queue worker (starts listening for jobs)
 require('./src/queues/emailQueue');
 
 const PORT = process.env.PORT || 5000;
-const httpServer = http.createServer(app);
-initSocket(httpServer);
 
 const start = async () => {
   try {
@@ -31,7 +27,7 @@ const start = async () => {
     await Interview.sync({ alter: true });
     await InterviewSchedule.sync({ alter: true });
 
-    httpServer.listen(PORT, () => {
+    app.listen(PORT, () => {
       logger.info(`\n    RevUp API is live`);
       logger.info(`    http://localhost:${PORT}`);
       logger.info(`    http://localhost:${PORT}/api-docs\n`);
