@@ -74,8 +74,13 @@ const interviewApiClient = axios.create({
  * revup_id maps to your local jobs.id
  */
 exports.getAIJobs = async () => {
-  const { data } = await interviewApiClient.get('/api/v1/jobs/');
-  return data; // Array of JobResponse
+  try {
+    const { data } = await interviewApiClient.get('/api/v1/jobs/');
+    if (!Array.isArray(data)) throw new Error('AI jobs endpoint returned unexpected format');
+    return data;
+  } catch (err) {
+    throw new Error(`AI Interview API unreachable: ${err.message}`);
+  }
 };
 
 /**
@@ -84,7 +89,8 @@ exports.getAIJobs = async () => {
  */
 exports.findAIJobId = async (localJobId) => {
   const jobs = await exports.getAIJobs();
-  const match = jobs.find((j) => j.revup_id === localJobId);
+  // revup_id is an integer in the AI API; localJobId may come in as string — coerce both
+  const match = jobs.find((j) => Number(j.revup_id) === Number(localJobId));
   return match ? match.id : null;
 };
 
