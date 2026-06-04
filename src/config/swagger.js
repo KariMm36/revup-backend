@@ -8,9 +8,14 @@ const options = {
     openapi: '3.0.0',
     info: {
       title: 'RevUp Job Portal API',
-      version: '3.0.0',
+      version: '4.0.0',
       description: `
-## RevUp — AI-Powered Job Portal API `.trim(),
+## RevUp — AI-Powered Job Portal API
+
+### ⚠️ Breaking Changes in v4.0.0
+The AI Interview system has been **fully replaced** with a new conversational API.
+See the [Interview Migration Guide](#tag/Interview) for details.
+`.trim(),
       contact: {
         name: 'RevUp Dev Team',
       }
@@ -129,6 +134,56 @@ const options = {
             status:        { type: 'string', enum: ['in-progress', 'completed'] },
           },
         },
+        // ── Interview schemas ─────────────────────────────────────────────────
+        Interview: {
+          type: 'object',
+          properties: {
+            id:              { type: 'integer', example: 12 },
+            seeker_id:       { type: 'integer', example: 5 },
+            job_id:          { type: 'integer', example: 34 },
+            ai_interview_id: { type: 'integer', example: 7, description: 'ID from the external AI platform' },
+            api_version:     { type: 'string', enum: ['v1', 'v2'], example: 'v2' },
+            status: {
+              type: 'string',
+              enum: ['in_progress', 'completed', 'passed', 'failed'],
+              example: 'completed',
+            },
+            total_score:  { type: 'number', nullable: true, example: 78.5, description: 'Average score across all answers (0–100)' },
+            answers:      { type: 'array', items: { $ref: '#/components/schemas/InterviewAnswer' }, description: 'Accumulated per-answer results' },
+            report:       { type: 'object', nullable: true, description: 'Full AI-generated report fetched on completion' },
+            createdAt:    { type: 'string', format: 'date-time' },
+            updatedAt:    { type: 'string', format: 'date-time' },
+          },
+        },
+        InterviewQuestion: {
+          type: 'object',
+          properties: {
+            id:            { type: 'integer', example: 3 },
+            question_type: { type: 'string', enum: ['mcq', 'open'], example: 'open' },
+            content:       { type: 'string', example: 'Explain the difference between REST and GraphQL.' },
+            options:       { type: 'array', items: { type: 'string' }, nullable: true, example: null, description: 'Only present for MCQ questions' },
+            difficulty:    { type: 'string', example: 'medium' },
+          },
+        },
+        AnswerEvaluation: {
+          type: 'object',
+          properties: {
+            score:          { type: 'number', example: 0.85, description: 'Score between 0 and 1' },
+            feedback:       { type: 'string', example: 'Good explanation, but missed mentioning caching.' },
+            ai_probability: { type: 'number', example: 0.12, description: 'Probability the answer was AI-generated (0–1)' },
+          },
+        },
+        InterviewAnswer: {
+          type: 'object',
+          properties: {
+            question_id:        { type: 'integer', example: 3 },
+            answer:             { type: 'string', example: 'REST uses fixed endpoints while GraphQL uses a single endpoint...' },
+            time_taken_seconds: { type: 'integer', example: 95 },
+            score:              { type: 'number', example: 0.85 },
+            feedback:           { type: 'string', example: 'Good explanation.' },
+            ai_probability:     { type: 'number', example: 0.12 },
+          },
+        },
       },
     },
     // Global security — apply to all endpoints by default
@@ -143,6 +198,16 @@ const options = {
       { name: 'Skills',       description: '🛠️ Global Skill Catalogue (Admin-managed)' },
       { name: 'Notifications',description: '🔔 In-App Notification Centre' },
       { name: 'Admin',        description: '🛡️ Admin Panel — User Moderation & Audit Logs' },
+      {
+        name: 'Interview',
+        description: `🤖 AI-Powered Conversational Interview Agent (v2)
+
+**Breaking change from v1:** The interview system is now fully conversational — questions are served one-at-a-time and each answer is graded immediately.
+
+**Old flow (removed):** POST /start (track) → answer all → POST /submit
+
+**New flow:** POST /start (job_id) → loop { GET /question → POST /answer } → auto-complete → recruiter sees report → PATCH /decision`,
+      },
     ],
   },
   // Scan all route files for @openapi JSDoc comments

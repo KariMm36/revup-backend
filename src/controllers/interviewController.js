@@ -1,188 +1,250 @@
 'use strict';
 
-const axios = require('axios');
 const { Op } = require('sequelize');
 const { Interview, User, Notification, Application, Job, Company } = require('../models');
+const aiService = require('../services/aiService');
 
-const AI_API_BASE = 'https://interview-production-ee82.up.railway.app';
-
-const VALID_TRACKS = ['Frontend', 'Backend', 'AI Engineering', 'Data Engineering'];
-
-// ── Helper: compute a single total_score from the AI report ──────────────────
-const computeTotalScore = (report) => {
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/interview/start
+// Seeker starts a conversational AI interview for a job they applied to
+// ─────────────────────────────────────────────────────────────────────────────
+exports.startInterview = async (req, res, next) => {
   try {
-    let totalPoints = 0;
-    let maxPoints = 0;
+    const { job_id } = req.body;
+    const seekerId = req.user.id;
 
-    const mcqGrades = report.mcq_grades || {};
-    for (const key of Object.keys(mcqGrades)) {
-      totalPoints += mcqGrades[key].score || 0;
-      maxPoints += 1;
+    // 1. Validate the job exists locally
+    const job = await Job.findByPk(job_id, { attributes: ['id', 'title', 'company_id'] });
+    if (!job) {
+      return res.status(404).json({ success: false, message: 'Job not found.' });
     }
 
-    const writtenGrades = report.written_grades || {};
-    for (const key of Object.keys(writtenGrades)) {
-      totalPoints += writtenGrades[key].score || 0;
-      maxPoints += 1;
+    // 2. Confirm the seeker has applied to this job
+    const application = await Application.findOne({
+      where: { seeker_id: seekerId, job_id },
+    });
+    if (!application) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only start an interview for a job you have applied to.',
+      });
     }
 
-    if (maxPoints === 0) return 0;
-    return Math.round((totalPoints / maxPoints) * 100);
-  } catch {
-    return null;
+    // 3. Guard: only one active interview per job
+    const existing = await Interview.findOne({
+      where: {
+        seeker_id: seekerId,
+        job_id,
+        api_version: 'v2',
+        status: { [Op.notIn]: ['completed', 'passed', 'failed'] },
+      },
+    });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'You already have an active interview for this job.',
+        data: { interview_id: existing.id },
+      });
+    }
+
+    // 4. Look up the AI API's job_id using revup_id → local job_id mapping
+    let aiJobId;
+    try {
+      aiJobId = await aiService.findAIJobId(job_id);
+    } catch {
+      return res.status(502).json({ success: false, message: 'AI interview service is currently unavailable.' });
+    }
+
+    if (!aiJobId) {
+      return res.status(404).json({
+        success: false,
+        message: 'This job is not yet available in the AI interview system. Please contact support.',
+      });
+    }
+
+    // 5. Start the interview on the AI platform
+    let aiInterview;
+    try {
+      aiInterview = await aiService.startAIInterview(aiJobId, req.user.name, req.user.email);
+    } catch {
+      return res.status(502).json({ success: false, message: 'Failed to start AI interview. Please try again.' });
+    }
+
+    // 6. Fetch the first question immediately
+    let firstQuestion;
+    try {
+      firstQuestion = await aiService.getNextAIQuestion(aiInterview.id);
+    } catch {
+      return res.status(502).json({ success: false, message: 'Interview started but failed to load first question. Please retry.' });
+    }
+
+    // 7. Save the session locally
+    const interview = await Interview.create({
+      seeker_id: seekerId,
+      job_id,
+      ai_interview_id: aiInterview.id,
+      status: 'in_progress',
+      api_version: 'v2',
+      answers: [],
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: `Interview started for "${job.title}". Good luck!`,
+      data: {
+        interview_id: interview.id,
+        job_id,
+        job_title: job.title,
+        question: firstQuestion,
+      },
+    });
+  } catch (err) {
+    next(err);
   }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/interview/start — Seeker starts an AI interview
+// GET /api/interview/:id/question
+// Get the next unanswered question for an ongoing interview
 // ─────────────────────────────────────────────────────────────────────────────
-exports.startInterview = async (req, res, next) => {
+exports.getNextQuestion = async (req, res, next) => {
   try {
-    const { track } = req.body;
+    const interview = await Interview.findByPk(req.params.id);
+    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
+    if (interview.seeker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'This is not your interview.' });
+    }
+    if (interview.status !== 'in_progress') {
+      return res.status(400).json({ success: false, message: 'This interview is not in progress.' });
+    }
 
-    if (!track || !VALID_TRACKS.includes(track)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid track. Must be one of: ${VALID_TRACKS.join(', ')}`,
-      });
+    let question;
+    try {
+      question = await aiService.getNextAIQuestion(interview.ai_interview_id);
+    } catch {
+      return res.status(502).json({ success: false, message: 'Failed to fetch question from AI service.' });
+    }
+
+    return res.status(200).json({ success: true, data: question });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /api/interview/:id/answer
+// Submit one answer — get immediate evaluation, auto-finalize when done
+// ─────────────────────────────────────────────────────────────────────────────
+exports.submitAnswer = async (req, res, next) => {
+  try {
+    const { question_id, answer, time_taken_seconds } = req.body;
+
+    const interview = await Interview.findByPk(req.params.id);
+    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
+    if (interview.seeker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'This is not your interview.' });
+    }
+    if (interview.status !== 'in_progress') {
+      return res.status(400).json({ success: false, message: 'This interview is not in progress.' });
     }
 
     // Proxy to AI API
     let aiResponse;
     try {
-      const { data } = await axios.post(`${AI_API_BASE}/interview/start`, { track }, {
-        timeout: 60000, // AI generation can take up to 60s
+      aiResponse = await aiService.submitAIAnswer(interview.ai_interview_id, {
+        question_id,
+        answer,
+        time_taken_seconds,
       });
-      aiResponse = data;
-    } catch (aiErr) {
-      return res.status(502).json({
-        success: false,
-        message: 'AI interview service is currently unavailable. Please try again later.',
-      });
+    } catch {
+      return res.status(502).json({ success: false, message: 'AI grading service is currently unavailable.' });
     }
 
-    // Save session to DB
-    const interview = await Interview.create({
-      seeker_id: req.user.id,
-      track,
-      status: 'pending',
-      questions: aiResponse,
-    });
+    const { evaluation, is_complete } = aiResponse;
 
-    return res.status(201).json({
-      success: true,
-      message: 'Interview started! Good luck.',
-      data: {
-        interview_id: interview.id,
-        track: interview.track,
-        questions: aiResponse,
+    // Accumulate this answer's result
+    const updatedAnswers = [
+      ...(interview.answers || []),
+      {
+        question_id,
+        answer,
+        time_taken_seconds,
+        score: evaluation.score,
+        feedback: evaluation.feedback,
+        ai_probability: evaluation.ai_probability,
       },
-    });
-  } catch (err) {
-    next(err);
-  }
-};
+    ];
 
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /api/interview/submit — Seeker submits answers
-// ─────────────────────────────────────────────────────────────────────────────
-exports.submitInterview = async (req, res, next) => {
-  try {
-    const { interview_id, mcq_answers, written_answers } = req.body;
+    // If interview is complete, finalize
+    if (is_complete) {
+      // Fetch the full report from AI
+      let report = null;
+      try {
+        report = await aiService.getAIReport(interview.ai_interview_id);
+      } catch {
+        // Non-fatal — we still mark completed
+      }
 
-    const interview = await Interview.findByPk(interview_id);
-    if (!interview) {
-      return res.status(404).json({ success: false, message: 'Interview session not found.' });
-    }
-    if (interview.seeker_id !== req.user.id) {
-      return res.status(403).json({ success: false, message: 'This is not your interview session.' });
-    }
-    if (interview.status !== 'pending') {
-      return res.status(400).json({ success: false, message: 'This interview has already been submitted.' });
-    }
+      // Compute total_score as the mean of all answer scores
+      const scores = updatedAnswers.map((a) => a.score).filter((s) => typeof s === 'number');
+      const totalScore = scores.length > 0
+        ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 100) / 100
+        : null;
 
-    // Proxy to AI API for grading
-    let aiReport;
-    try {
-      const { data } = await axios.post(`${AI_API_BASE}/interview/submit`, {
-        track: interview.track,
-        mcq_answers,
-        written_answers,
-      }, { timeout: 120000 }); // grading can take longer
-      aiReport = data;
-    } catch (aiErr) {
-      return res.status(502).json({
-        success: false,
-        message: 'AI grading service is currently unavailable. Please try again later.',
+      await interview.update({
+        answers: updatedAnswers,
+        report,
+        total_score: totalScore,
+        status: 'completed',
       });
-    }
 
-    const totalScore = computeTotalScore(aiReport.report);
+      // ── Notify recruiters of the company that posted the job ──────────────
+      const jobRecord = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
+      if (jobRecord) {
+        const recruiters = await User.findAll({
+          where: { role: 'recruiter', company_id: jobRecord.company_id },
+          attributes: ['id'],
+        });
+        if (recruiters.length > 0) {
+          await Notification.bulkCreate(
+            recruiters.map((r) => ({
+              user_id: r.id,
+              message: `${req.user.name} has completed their AI interview for "${jobRecord.title}". Score: ${totalScore ?? 'N/A'}%. Please review and make a decision.`,
+            }))
+          );
+        }
+      }
 
-    // Update the interview record
-    await interview.update({
-      status: 'submitted',
-      mcq_answers,
-      written_answers,
-      report: aiReport.report,
-      total_score: totalScore,
-    });
-
-    // ── Smart Recruiter Notification ────────────────────────────────────────
-    // Only notify recruiters from companies the seeker has applied to,
-    // not every single recruiter on the platform.
-    const seekerApplications = await Application.findAll({
-      where: { seeker_id: req.user.id },
-      include: [{
-        model: Job,
-        as: 'job',
-        attributes: ['company_id'],
-      }],
-    });
-
-    const companyIds = [...new Set(
-      seekerApplications
-        .filter(app => app.job)
-        .map(app => app.job.company_id)
-    )];
-
-    let recruiters = [];
-    if (companyIds.length > 0) {
-      // Find recruiters belonging to those companies
-      recruiters = await User.findAll({
-        where: {
-          role: 'recruiter',
-          company_id: { [Op.in]: companyIds },
+      return res.status(200).json({
+        success: true,
+        message: 'Interview completed! Your results are under review.',
+        data: {
+          interview_id: interview.id,
+          is_complete: true,
+          evaluation,
+          total_score: totalScore,
+          report,
         },
-        attributes: ['id'],
       });
     }
 
-    // Fallback: if seeker hasn't applied anywhere yet, notify all recruiters
-    if (recruiters.length === 0) {
-      recruiters = await User.findAll({
-        where: { role: 'recruiter' },
-        attributes: ['id'],
-      });
-    }
+    // Interview still in progress — return evaluation + fetch next question
+    await interview.update({ answers: updatedAnswers });
 
-    const notifications = recruiters.map((recruiter) => ({
-      user_id: recruiter.id,
-      message: `${req.user.name} has completed their AI interview for the ${interview.track} track. Score: ${totalScore ?? 'N/A'}%. Please review their results.`,
-    }));
-    if (notifications.length > 0) {
-      await Notification.bulkCreate(notifications);
+    let nextQuestion = null;
+    try {
+      nextQuestion = await aiService.getNextAIQuestion(interview.ai_interview_id);
+    } catch {
+      // Non-fatal — frontend can call GET /question separately
     }
 
     return res.status(200).json({
       success: true,
-      message: 'Interview submitted successfully! Your results are under review.',
       data: {
         interview_id: interview.id,
-        track: interview.track,
-        status: 'submitted',
-        total_score: totalScore,
-        report: aiReport.report,
+        is_complete: false,
+        evaluation,
+        next_question: nextQuestion,
       },
     });
   } catch (err) {
@@ -191,7 +253,36 @@ exports.submitInterview = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/interview/my-history — Seeker sees their own interview history
+// POST /api/interview/:id/track
+// Report a real-time cheat event during the interview
+// ─────────────────────────────────────────────────────────────────────────────
+exports.trackCheatEvent = async (req, res, next) => {
+  try {
+    const { event_type, details } = req.body;
+
+    const interview = await Interview.findByPk(req.params.id, { attributes: ['id', 'seeker_id', 'ai_interview_id', 'status'] });
+    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
+    if (interview.seeker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'This is not your interview.' });
+    }
+    if (interview.status !== 'in_progress') {
+      return res.status(400).json({ success: false, message: 'Interview is not in progress.' });
+    }
+
+    try {
+      await aiService.trackAICheatEvent(interview.ai_interview_id, { event_type, details });
+    } catch {
+      // Best-effort — don't block the candidate
+    }
+
+    return res.status(200).json({ success: true, message: 'Event recorded.' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/interview/my-history — Seeker's own interview history (paginated)
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getMyInterviews = async (req, res, next) => {
   try {
@@ -201,7 +292,7 @@ exports.getMyInterviews = async (req, res, next) => {
 
     const { count, rows } = await Interview.findAndCountAll({
       where: { seeker_id: req.user.id },
-      attributes: ['id', 'track', 'status', 'total_score', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'job_id', 'track', 'api_version', 'status', 'total_score', 'createdAt', 'updatedAt'],
       order: [['createdAt', 'DESC']],
       limit,
       offset,
@@ -225,7 +316,7 @@ exports.getMyInterviews = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/interview/my-history/:id — Seeker sees full detail of one interview
+// GET /api/interview/my-history/:id — Full detail of one interview
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getMyInterviewDetail = async (req, res, next) => {
   try {
@@ -242,7 +333,7 @@ exports.getMyInterviewDetail = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// GET /api/interview/applicant/:seekerId — Recruiter views a seeker's interview
+// GET /api/interview/applicant/:seekerId — Recruiter views a seeker's interviews
 // ─────────────────────────────────────────────────────────────────────────────
 exports.getApplicantInterview = async (req, res, next) => {
   try {
@@ -266,18 +357,18 @@ exports.getApplicantInterview = async (req, res, next) => {
     const hasApplied = await Application.findOne({ where: { seeker_id: seekerId, job_id: recruiterJobIds } });
     if (!hasApplied) return res.status(403).json({ success: false, message: 'You can only view interviews of seekers who applied to your jobs.' });
 
-    // Get their most recent submitted interview (or all)
+    // Return only interviews for jobs owned by this recruiter's company
     const interviews = await Interview.findAll({
-      where: { seeker_id: seekerId },
+      where: {
+        seeker_id: seekerId,
+        job_id: recruiterJobIds,
+      },
       order: [['createdAt', 'DESC']],
     });
 
     return res.status(200).json({
       success: true,
-      data: {
-        seeker,
-        interviews,
-      },
+      data: { seeker, interviews },
     });
   } catch (err) {
     next(err);
@@ -285,7 +376,7 @@ exports.getApplicantInterview = async (req, res, next) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PATCH /api/interview/:id/decision — Recruiter decides: passed or failed
+// PATCH /api/interview/:id/decision — Recruiter makes pass/fail decision
 // ─────────────────────────────────────────────────────────────────────────────
 exports.makeDecision = async (req, res, next) => {
   try {
@@ -304,27 +395,40 @@ exports.makeDecision = async (req, res, next) => {
 
     if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
 
-    if (interview.status !== 'submitted') {
+    // Only allow decisions on completed/submitted interviews
+    if (!['completed', 'submitted'].includes(interview.status)) {
       return res.status(400).json({
         success: false,
-        message: 'You can only make a decision on submitted interviews.',
+        message: 'You can only make a decision on a completed interview.',
       });
+    }
+
+    // Verify the recruiter's company owns the job
+    let company = await Company.findOne({ where: { recruiter_id: req.user.id } });
+    if (!company && req.user.company_id) {
+      company = await Company.findByPk(req.user.company_id);
+    }
+    if (!company) return res.status(403).json({ success: false, message: 'You are not associated with any company.' });
+
+    if (interview.job_id) {
+      const job = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
+      if (job && job.company_id !== company.id) {
+        return res.status(403).json({ success: false, message: 'You can only decide on interviews for your company\'s jobs.' });
+      }
     }
 
     await interview.update({ status: decision });
 
     // Notify the seeker
-    let notificationMsg;
-    if (decision === 'passed') {
-      notificationMsg = `🎉 Congratulations, ${interview.seeker.name}! You passed the AI interview for the ${interview.track} track. You will be scheduled for a real interview soon.`;
-    } else {
-      notificationMsg = `Thank you for your effort, ${interview.seeker.name}. Unfortunately, you did not pass the AI interview for the ${interview.track} track. Keep learning and try again!`;
-    }
+    const jobLabel = interview.job_id
+      ? (await Job.findByPk(interview.job_id, { attributes: ['title'] }))?.title || 'the position'
+      : (interview.track ? `the ${interview.track} track` : 'the position');
 
-    await Notification.create({
-      user_id: interview.seeker_id,
-      message: notificationMsg,
-    });
+    const notificationMsg = decision === 'passed'
+      ? `🎉 Congratulations, ${interview.seeker.name}! You passed the AI interview for ${jobLabel}. You will be scheduled for a real interview soon.`
+      : `Thank you for your effort, ${interview.seeker.name}. Unfortunately, you did not pass the AI interview for ${jobLabel}. Keep learning and try again!`;
+
+    await Notification.create({ user_id: interview.seeker_id, message: notificationMsg });
 
     return res.status(200).json({
       success: true,
@@ -332,7 +436,6 @@ exports.makeDecision = async (req, res, next) => {
       data: {
         interview_id: interview.id,
         seeker: interview.seeker.name,
-        track: interview.track,
         status: decision,
         total_score: interview.total_score,
       },

@@ -7,6 +7,7 @@ const FormData = require('form-data');
  * Service to interact with the Python AI APIs
  */
 
+// ─── CV Parser / Job Recommender ─────────────────────────────────────────────
 // If env var is not set, fallback to the known Railway URL
 const AI_BASE_URL = process.env.AI_API_URL || 'https://cvparser-with-recommendation-production.up.railway.app';
 
@@ -55,4 +56,90 @@ exports.parseCV = async (fileBuffer, originalName) => {
     console.error('AI CV Parser Error:', error.response?.data || error.message);
     throw new Error('Failed to parse CV with the AI service.');
   }
+};
+
+// ─── AI Interview Platform ────────────────────────────────────────────────────
+const INTERVIEW_API_BASE = process.env.INTERVIEW_API_URL || 'https://situated-aloof-ambitious.ngrok-free.dev';
+
+// Shared axios instance with default headers (ngrok requires this)
+const interviewApiClient = axios.create({
+  baseURL: INTERVIEW_API_BASE,
+  headers: { 'ngrok-skip-browser-warning': 'true' },
+  timeout: 30000,
+});
+
+/**
+ * Fetch all jobs from the AI Interview Platform.
+ * Each job has { id, revup_id, title, description, skills, seniority }
+ * revup_id maps to your local jobs.id
+ */
+exports.getAIJobs = async () => {
+  const { data } = await interviewApiClient.get('/api/v1/jobs/');
+  return data; // Array of JobResponse
+};
+
+/**
+ * Look up the AI-side job_id for a given local job ID.
+ * Returns the AI job_id (integer), or null if not found.
+ */
+exports.findAIJobId = async (localJobId) => {
+  const jobs = await exports.getAIJobs();
+  const match = jobs.find((j) => j.revup_id === localJobId);
+  return match ? match.id : null;
+};
+
+/**
+ * Start a new conversational interview session on the AI platform.
+ * @param {number} aiJobId   - The AI API's own job ID (from findAIJobId)
+ * @param {string} name      - Candidate full name
+ * @param {string} email     - Candidate email
+ * @returns {Promise<{ id, job_id, status, candidate_name }>}
+ */
+exports.startAIInterview = async (aiJobId, name, email) => {
+  const { data } = await interviewApiClient.post('/api/v1/interviews/start', {
+    job_id: aiJobId,
+    candidate_name: name,
+    candidate_email: email,
+  });
+  return data; // InterviewResponse: { id, job_id, status, candidate_name }
+};
+
+/**
+ * Get the next question for an ongoing interview.
+ * @param {number} aiInterviewId - The AI API's interview ID
+ * @returns {Promise<{ id, question_type, content, options, difficulty }>}
+ */
+exports.getNextAIQuestion = async (aiInterviewId) => {
+  const { data } = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/question`);
+  return data; // QuestionResponse
+};
+
+/**
+ * Submit an answer to a question and receive immediate evaluation.
+ * @param {number} aiInterviewId
+ * @param {{ question_id: number, answer: string, time_taken_seconds: number }} payload
+ * @returns {Promise<{ status, evaluation: { score, feedback, ai_probability }, is_complete }>}
+ */
+exports.submitAIAnswer = async (aiInterviewId, payload) => {
+  const { data } = await interviewApiClient.post(`/api/v1/interviews/${aiInterviewId}/answer`, payload);
+  return data; // AnswerResponse
+};
+
+/**
+ * Report a cheating event in real-time.
+ * @param {number} aiInterviewId
+ * @param {{ event_type: string, details: string }} event
+ */
+exports.trackAICheatEvent = async (aiInterviewId, event) => {
+  await interviewApiClient.post(`/api/v1/interviews/${aiInterviewId}/track`, event);
+};
+
+/**
+ * Fetch the final grading report after the interview is complete.
+ * @param {number} aiInterviewId
+ * @returns {Promise<Object>} Full report object
+ */
+exports.getAIReport = async (aiInterviewId) => {
+  const { data } = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/report`);
+  return data;
 };

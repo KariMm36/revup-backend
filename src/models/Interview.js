@@ -13,39 +13,71 @@ const Interview = sequelize.define('Interview', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
-  track: {
-    type: DataTypes.ENUM('Frontend', 'Backend', 'AI Engineering', 'Data Engineering'),
-    allowNull: false,
+
+  // ─── v2 fields (new conversational API) ──────────────────────────────────────
+  // The local Job this interview is for
+  job_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true, // null on legacy v1 records
   },
-  // pending → submitted → passed / failed
+  // The interview ID returned by the external AI API
+  ai_interview_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  // How many total questions the AI will ask (set at start)
+  total_questions: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
+  // Accumulates per-answer results: [{ question_id, answer, score, feedback, ai_probability, time_taken_seconds }]
+  answers: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: [],
+  },
+
+  // ─── API version tag ─────────────────────────────────────────────────────────
+  // 'v1' = legacy batch system, 'v2' = new conversational system
+  api_version: {
+    type: DataTypes.ENUM('v1', 'v2'),
+    allowNull: false,
+    defaultValue: 'v2',
+  },
+
+  // ─── Shared fields ───────────────────────────────────────────────────────────
+  // pending → in_progress → completed → passed / failed
   status: {
-    type: DataTypes.ENUM('pending', 'submitted', 'passed', 'failed'),
+    type: DataTypes.ENUM('pending', 'submitted', 'in_progress', 'completed', 'passed', 'failed'),
     allowNull: false,
-    defaultValue: 'pending',
+    defaultValue: 'in_progress',
   },
-  // Full question object from AI: { mcq_questions: [...], written_questions: [...] }
-  questions: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  // Seeker's MCQ answers: { "1": "option text", "2": "option text" }
-  mcq_answers: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  // Seeker's written answers: { "0": "answer text", "1": "answer text" }
-  written_answers: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  // Full grading report from AI: { mcq_grades, written_grades, cheating_report }
+  // Full grading report stored after interview completes
   report: {
     type: DataTypes.JSON,
     allowNull: true,
   },
-  // Computed overall score (0–100) — null until submitted
+  // Computed overall score (0–100) — null until completed
   total_score: {
     type: DataTypes.FLOAT,
+    allowNull: true,
+  },
+
+  // ─── Legacy v1 fields (kept nullable for backwards compatibility) ─────────────
+  track: {
+    type: DataTypes.ENUM('Frontend', 'Backend', 'AI Engineering', 'Data Engineering'),
+    allowNull: true,
+  },
+  questions: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  mcq_answers: {
+    type: DataTypes.JSON,
+    allowNull: true,
+  },
+  written_answers: {
+    type: DataTypes.JSON,
     allowNull: true,
   },
 }, {

@@ -2,29 +2,44 @@
 
 const { body, param } = require('express-validator');
 
-const VALID_TRACKS = ['Frontend', 'Backend', 'AI Engineering', 'Data Engineering'];
-
 // POST /api/interview/start
 const startRules = [
-  body('track')
-    .notEmpty().withMessage('Track is required.')
-    .isIn(VALID_TRACKS)
-    .withMessage(`Track must be one of: ${VALID_TRACKS.join(', ')}.`),
+  body('job_id')
+    .notEmpty().withMessage('job_id is required.')
+    .isInt({ gt: 0 }).withMessage('job_id must be a positive integer.'),
 ];
 
-// POST /api/interview/submit
-const submitRules = [
-  body('interview_id')
-    .notEmpty().withMessage('interview_id is required.')
-    .isInt({ gt: 0 }).withMessage('interview_id must be a positive integer.'),
+// POST /api/interview/:id/answer
+const answerRules = [
+  param('id')
+    .isInt({ gt: 0 }).withMessage('Interview ID must be a valid integer.'),
 
-  body('mcq_answers')
-    .notEmpty().withMessage('mcq_answers is required.')
-    .isObject().withMessage('mcq_answers must be an object of { "question_id": "answer" }.'),
+  body('question_id')
+    .notEmpty().withMessage('question_id is required.')
+    .isInt({ gt: 0 }).withMessage('question_id must be a positive integer.'),
 
-  body('written_answers')
-    .notEmpty().withMessage('written_answers is required.')
-    .isObject().withMessage('written_answers must be an object of { "index": "answer" }.'),
+  body('answer')
+    .notEmpty().withMessage('answer is required.')
+    .isString().withMessage('answer must be a string.')
+    .isLength({ min: 1, max: 5000 }).withMessage('answer must be between 1 and 5000 characters.'),
+
+  body('time_taken_seconds')
+    .notEmpty().withMessage('time_taken_seconds is required.')
+    .isInt({ min: 0 }).withMessage('time_taken_seconds must be a non-negative integer.'),
+];
+
+// POST /api/interview/:id/track
+const cheatEventRules = [
+  param('id')
+    .isInt({ gt: 0 }).withMessage('Interview ID must be a valid integer.'),
+
+  body('event_type')
+    .notEmpty().withMessage('event_type is required.')
+    .isString().withMessage('event_type must be a string.'),
+
+  body('details')
+    .notEmpty().withMessage('details is required.')
+    .isString().withMessage('details must be a string.'),
 ];
 
 // PATCH /api/interview/:id/decision
@@ -37,4 +52,4 @@ const decisionRules = [
     .isIn(['passed', 'failed']).withMessage('decision must be either "passed" or "failed".'),
 ];
 
-module.exports = { startRules, submitRules, decisionRules };
+module.exports = { startRules, answerRules, cheatEventRules, decisionRules };
