@@ -5,6 +5,24 @@ const { Interview, User, Notification, Application, Job, Company } = require('..
 const aiService = require('../services/aiService');
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Normalize a raw question object from the AI API into a consistent shape.
+// Returns null if the question content is empty/missing (AI API bug guard).
+// ─────────────────────────────────────────────────────────────────────────────
+const normalizeQuestion = (q) => {
+  if (!q) return null;
+  // Guard: AI API sometimes returns questions with empty content strings
+  if (!q.content || q.content.trim() === '') return null;
+  return {
+    id: q.id,
+    question_type: q.question_type,
+    content: q.content.trim(),
+    difficulty: q.difficulty || null,
+    // Always return options as an array (null for open/technical questions)
+    options: Array.isArray(q.options) ? q.options : null,
+  };
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/interview/start
 // Seeker starts a conversational AI interview for a job they applied to
 // ─────────────────────────────────────────────────────────────────────────────
@@ -73,7 +91,11 @@ exports.startInterview = async (req, res, next) => {
     // 6. Fetch the first question immediately
     let firstQuestion;
     try {
-      firstQuestion = await aiService.getNextAIQuestion(aiInterview.id);
+      const rawQuestion = await aiService.getNextAIQuestion(aiInterview.id);
+      firstQuestion = normalizeQuestion(rawQuestion);
+      if (!firstQuestion) {
+        return res.status(502).json({ success: false, message: 'Interview started but the first question could not be loaded. Please retry.' });
+      }
     } catch {
       return res.status(502).json({ success: false, message: 'Interview started but failed to load first question. Please retry.' });
     }
@@ -120,9 +142,14 @@ exports.getNextQuestion = async (req, res, next) => {
 
     let question;
     try {
-      question = await aiService.getNextAIQuestion(interview.ai_interview_id);
+      const rawQuestion = await aiService.getNextAIQuestion(interview.ai_interview_id);
+      question = normalizeQuestion(rawQuestion);
     } catch {
       return res.status(502).json({ success: false, message: 'Failed to fetch question from AI service.' });
+    }
+
+    if (!question) {
+      return res.status(204).json({ success: false, message: 'No question available at this time. The interview may be complete on the AI side.' });
     }
 
     return res.status(200).json({ success: true, data: question });
@@ -232,10 +259,15 @@ exports.submitAnswer = async (req, res, next) => {
     await interview.update({ answers: updatedAnswers });
 
     let nextQuestion = null;
+    let nextQuestionUnavailable = false;
     try {
-      nextQuestion = await aiService.getNextAIQuestion(interview.ai_interview_id);
+      const rawNext = await aiService.getNextAIQuestion(interview.ai_interview_id);
+      nextQuestion = normalizeQuestion(rawNext);
+      // If AI returned a question but content was empty, flag it so frontend knows
+      if (!nextQuestion && rawNext) nextQuestionUnavailable = true;
     } catch {
-      // Non-fatal — frontend can call GET /question separately
+      // Non-fatal — frontend can call GET /:id/question as a fallback
+      nextQuestionUnavailable = true;
     }
 
     return res.status(200).json({
@@ -245,6 +277,9 @@ exports.submitAnswer = async (req, res, next) => {
         is_complete: false,
         evaluation,
         next_question: nextQuestion,
+        // true = AI had a question but content was blank/unavailable;
+        // frontend should retry GET /api/interview/:id/question
+        next_question_unavailable: nextQuestionUnavailable,
       },
     });
   } catch (err) {
