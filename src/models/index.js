@@ -62,16 +62,18 @@ User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications', onDelet
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // ─── User <-> Skill (M:N via UserSkills) ─────────────────────────────────────
-User.belongsToMany(Skill, { through: UserSkill, foreignKey: 'user_id', otherKey: 'skill_id', as: 'skills' });
+User.belongsToMany(Skill, { through: UserSkill, foreignKey: 'user_id', otherKey: 'skill_id', as: 'skills', onDelete: 'CASCADE' });
 Skill.belongsToMany(User, { through: UserSkill, foreignKey: 'skill_id', otherKey: 'user_id', as: 'users' });
+User.hasMany(UserSkill, { foreignKey: 'user_id', as: 'userSkillEntries', onDelete: 'CASCADE' });
 
 // ─── Job <-> Skill (M:N via JobSkills) ───────────────────────────────────────
 Job.belongsToMany(Skill, { through: JobSkill, foreignKey: 'job_id', otherKey: 'skill_id', as: 'skills' });
 Skill.belongsToMany(Job, { through: JobSkill, foreignKey: 'skill_id', otherKey: 'job_id', as: 'jobs' });
 
 // ─── User <-> Job (M:N via SavedJobs) ────────────────────────────────────────
-User.belongsToMany(Job, { through: SavedJob, foreignKey: 'user_id', otherKey: 'job_id', as: 'savedJobs' });
+User.belongsToMany(Job, { through: SavedJob, foreignKey: 'user_id', otherKey: 'job_id', as: 'savedJobs', onDelete: 'CASCADE' });
 Job.belongsToMany(User, { through: SavedJob, foreignKey: 'job_id', otherKey: 'user_id', as: 'savedByUsers' });
+User.hasMany(SavedJob, { foreignKey: 'user_id', as: 'savedJobEntries', onDelete: 'CASCADE' });
 
 // ─── User <-> Experience ──────────────────────────────────────────────────────
 User.hasMany(Experience, { foreignKey: 'user_id', as: 'experience', onDelete: 'CASCADE' });
@@ -109,6 +111,7 @@ Enrollment.belongsTo(User,   { foreignKey: 'user_id',   as: 'user' });
 Lesson.hasMany(LessonProgress, { foreignKey: 'lesson_id', as: 'progress', onDelete: 'CASCADE' });
 LessonProgress.belongsTo(Lesson, { foreignKey: 'lesson_id', as: 'lesson' });
 LessonProgress.belongsTo(User,   { foreignKey: 'user_id',   as: 'user' });
+User.hasMany(LessonProgress, { foreignKey: 'user_id', as: 'lessonProgress', onDelete: 'CASCADE' });
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -129,7 +132,8 @@ User.hasMany(InterviewSchedule, { foreignKey: 'seeker_id', as: 'seekerSchedules'
 InterviewSchedule.belongsTo(User, { foreignKey: 'seeker_id', as: 'seeker' });
 
 // Recruiter → has many schedules they created
-User.hasMany(InterviewSchedule, { foreignKey: 'recruiter_id', as: 'recruiterSchedules' });
+// SET NULL so that if a recruiter is deleted, the schedule row is kept but recruiter_id is nulled
+User.hasMany(InterviewSchedule, { foreignKey: 'recruiter_id', as: 'recruiterSchedules', onDelete: 'SET NULL' });
 InterviewSchedule.belongsTo(User, { foreignKey: 'recruiter_id', as: 'recruiter' });
 
 
