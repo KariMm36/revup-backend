@@ -2,6 +2,7 @@
 
 const { InterviewSchedule, Interview, User, Notification } = require('../models');
 const { sendInterviewScheduleEmail, sendInterviewCancelledEmail } = require('../services/emailService');
+const { Op } = require('sequelize');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/schedule — Recruiter schedules a real interview for a passed seeker
@@ -15,6 +16,10 @@ exports.scheduleInterview = async (req, res, next) => {
         success: false,
         message: 'interview_id and scheduled_at are required.',
       });
+    }
+
+    if (new Date(scheduled_at) <= new Date()) {
+      return res.status(400).json({ success: false, message: 'scheduled_at must be a future date and time.' });
     }
 
     // Verify the interview exists and is in "passed" status
@@ -38,6 +43,36 @@ exports.scheduleInterview = async (req, res, next) => {
       return res.status(409).json({
         success: false,
         message: 'This interview has already been scheduled. Update it instead.',
+      });
+    }
+
+    // Check for time-overlap (±1 hour window) for the recruiter or seeker
+    const requestedTime = new Date(scheduled_at);
+    const windowStart = new Date(requestedTime.getTime() - 60 * 60 * 1000);
+    const windowEnd = new Date(requestedTime.getTime() + 60 * 60 * 1000);
+
+    const conflicting = await InterviewSchedule.findOne({
+      where: {
+        status: { [Op.ne]: 'cancelled' },
+        scheduled_at: { [Op.gte]: windowStart, [Op.lte]: windowEnd },
+        [Op.or]: [
+          { recruiter_id: req.user.id },
+          { seeker_id: interview.seeker_id },
+        ],
+      },
+      include: [
+        { model: User, as: 'recruiter', attributes: ['name'] },
+        { model: User, as: 'seeker', attributes: ['name'] },
+      ],
+    });
+
+    if (conflicting) {
+      const who = conflicting.recruiter_id === req.user.id
+        ? `Recruiter (${conflicting.recruiter.name})`
+        : `Seeker (${conflicting.seeker.name})`;
+      return res.status(409).json({
+        success: false,
+        message: `Schedule conflict: ${who} already has an interview scheduled within ±1 hour of the requested time.`,
       });
     }
 
@@ -152,6 +187,47 @@ exports.updateSchedule = async (req, res, next) => {
 
     if (schedule.recruiter_id !== req.user.id) {
       return res.status(403).json({ success: false, message: 'You can only update schedules you created.' });
+    }
+
+    if (schedule.status === 'cancelled') {
+      return res.status(400).json({ success: false, message: 'Cannot update a cancelled schedule. Please create a new one.' });
+    }
+
+    if (scheduled_at) {
+      if (new Date(scheduled_at) <= new Date()) {
+        return res.status(400).json({ success: false, message: 'scheduled_at must be a future date and time.' });
+      }
+
+      // Check for time-overlap (±1 hour window) excluding the current schedule
+      const requestedTime = new Date(scheduled_at);
+      const windowStart = new Date(requestedTime.getTime() - 60 * 60 * 1000);
+      const windowEnd = new Date(requestedTime.getTime() + 60 * 60 * 1000);
+
+      const conflicting = await InterviewSchedule.findOne({
+        where: {
+          id: { [Op.ne]: schedule.id },
+          status: { [Op.ne]: 'cancelled' },
+          scheduled_at: { [Op.gte]: windowStart, [Op.lte]: windowEnd },
+          [Op.or]: [
+            { recruiter_id: req.user.id },
+            { seeker_id: schedule.seeker_id },
+          ],
+        },
+        include: [
+          { model: User, as: 'recruiter', attributes: ['name'] },
+          { model: User, as: 'seeker', attributes: ['name'] },
+        ],
+      });
+
+      if (conflicting) {
+        const who = conflicting.recruiter_id === req.user.id
+          ? `Recruiter (${conflicting.recruiter.name})`
+          : `Seeker (${conflicting.seeker.name})`;
+        return res.status(409).json({
+          success: false,
+          message: `Schedule conflict: ${who} already has an interview scheduled within ±1 hour of the requested time.`,
+        });
+      }
     }
 
     const updates = {};

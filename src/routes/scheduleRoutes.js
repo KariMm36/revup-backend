@@ -62,7 +62,7 @@ const { scheduleRules, updateScheduleRules } = require('../validators/scheduleVa
  *       404:
  *         description: Interview not found
  *       409:
- *         description: Already scheduled
+ *         description: Already scheduled or time conflict with existing schedule
  */
 router.post('/', protect, authorize('recruiter'), scheduleRules, validate, scheduleController.scheduleInterview);
 
@@ -79,6 +79,23 @@ router.post('/', protect, authorize('recruiter'), scheduleRules, validate, sched
  *         description: List of scheduled interviews with seeker info
  */
 router.get('/', protect, authorize('recruiter'), scheduleController.getRecruiterSchedules);
+
+// ─── SEEKER ROUTES ────────────────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /api/schedule/my-schedule:
+ *   get:
+ *     tags: [Schedule]
+ *     summary: Get seeker's own scheduled real interviews (Seeker only)
+ *     description: Returns all real interview appointments scheduled for the seeker, with track, date, location, and recruiter info.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of scheduled interviews for the seeker
+ */
+router.get('/my-schedule', protect, authorize('seeker'), scheduleController.getMySchedule);
 
 /**
  * @openapi
@@ -108,6 +125,8 @@ router.get('/', protect, authorize('recruiter'), scheduleController.getRecruiter
  *     responses:
  *       200:
  *         description: Schedule updated — seeker notified
+ *       400:
+ *         description: Cannot update a cancelled schedule
  *       403:
  *         description: Not your schedule
  *       404:
@@ -146,21 +165,5 @@ router.patch('/:id', protect, authorize('recruiter'), updateScheduleRules, valid
  */
 router.delete('/:id', protect, authorize('recruiter'), scheduleController.cancelSchedule);
 
-// ─── SEEKER ROUTES ────────────────────────────────────────────────────────────
-
-/**
- * @openapi
- * /api/schedule/my-schedule:
- *   get:
- *     tags: [Schedule]
- *     summary: Get seeker's own scheduled real interviews (Seeker only)
- *     description: Returns all real interview appointments scheduled for the seeker, with track, date, location, and recruiter info.
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: List of scheduled interviews for the seeker
- */
-router.get('/my-schedule', protect, authorize('seeker'), scheduleController.getMySchedule);
 
 module.exports = router;

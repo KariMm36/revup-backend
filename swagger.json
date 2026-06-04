@@ -1,4 +1,4 @@
-﻿{
+{
     "openapi":  "3.0.0",
     "info":  {
                  "title":  "RevUp Job Portal API",
@@ -273,6 +273,10 @@
                  {
                      "name":  "Admin",
                      "description":  "🛡️ Admin Panel — User Moderation \u0026 Audit Logs"
+                 },
+                 {
+                     "name":  "Schedule",
+                     "description":  "📅 Real Interview Scheduling (after passing AI interview)"
                  }
              ],
     "paths":  {
@@ -2066,6 +2070,142 @@
                                                                                  }
                                                                      }
                                                    }
-                                    }
+                                    },
+                  "/api/schedule": {
+                                       "post": {
+                                                   "tags": ["Schedule"],
+                                                   "summary": "Schedule a real interview for a seeker who passed the AI interview (Recruiter only)",
+                                                   "description": "After reviewing the AI interview report, the recruiter schedules a real interview with a date, location/link, and optional notes. Includes time-overlap conflict detection. The seeker is notified via in-app notification AND email.",
+                                                   "security": [{"bearerAuth": []}],
+                                                   "requestBody": {
+                                                                      "required": true,
+                                                                      "content": {
+                                                                                     "application/json": {
+                                                                                                            "schema": {
+                                                                                                                          "type": "object",
+                                                                                                                          "required": ["interview_id", "scheduled_at"],
+                                                                                                                          "properties": {
+                                                                                                                                            "interview_id": {
+                                                                                                                                                                "type": "integer",
+                                                                                                                                                                "description": "ID of the AI interview that was marked as passed",
+                                                                                                                                                                "example": 5
+                                                                                                                                                            },
+                                                                                                                                            "scheduled_at": {
+                                                                                                                                                                "type": "string",
+                                                                                                                                                                "format": "date-time",
+                                                                                                                                                                "description": "Date and time of the real interview (ISO 8601, must be in the future)",
+                                                                                                                                                                "example": "2026-06-01T10:00:00.000Z"
+                                                                                                                                                            },
+                                                                                                                                            "location": {
+                                                                                                                                                            "type": "string",
+                                                                                                                                                            "description": "Physical location or video call link",
+                                                                                                                                                            "example": "https://meet.google.com/abc-xyz"
+                                                                                                                                                        },
+                                                                                                                                            "notes": {
+                                                                                                                                                         "type": "string",
+                                                                                                                                                         "description": "Any additional notes for the seeker",
+                                                                                                                                                         "example": "Please bring your portfolio."
+                                                                                                                                                     }
+                                                                                                                                        }
+                                                                                                                      }
+                                                                                                        }
+                                                                                 }
+                                                                  },
+                                                   "responses": {
+                                                                    "201": {"description": "Interview scheduled — seeker notified via app + email"},
+                                                                    "400": {"description": "Interview not in passed state / missing fields / past date"},
+                                                                    "404": {"description": "Interview not found"},
+                                                                    "409": {"description": "Already scheduled or time conflict with existing schedule"}
+                                                                }
+                                               },
+                                       "get": {
+                                                  "tags": ["Schedule"],
+                                                  "summary": "Get all interviews scheduled by this recruiter (Recruiter only)",
+                                                  "security": [{"bearerAuth": []}],
+                                                  "responses": {
+                                                                   "200": {"description": "List of scheduled interviews with seeker info"}
+                                                               }
+                                              }
+                                   },
+                  "/api/schedule/my-schedule": {
+                                                   "get": {
+                                                              "tags": ["Schedule"],
+                                                              "summary": "Get seeker's own scheduled real interviews (Seeker only)",
+                                                              "description": "Returns all real interview appointments scheduled for the seeker, with track, date, location, and recruiter info.",
+                                                              "security": [{"bearerAuth": []}],
+                                                              "responses": {
+                                                                               "200": {"description": "List of scheduled interviews for the seeker"}
+                                                                           }
+                                                          }
+                                               },
+                  "/api/schedule/{id}": {
+                                            "patch": {
+                                                         "tags": ["Schedule"],
+                                                         "summary": "Update a scheduled interview's date, location, or notes (Recruiter only)",
+                                                         "description": "Updates schedule details. Cannot update cancelled schedules. Includes time-overlap conflict detection when changing scheduled_at.",
+                                                         "security": [{"bearerAuth": []}],
+                                                         "parameters": [
+                                                                           {
+                                                                               "in": "path",
+                                                                               "name": "id",
+                                                                               "required": true,
+                                                                               "schema": {"type": "integer"}
+                                                                           }
+                                                                       ],
+                                                         "requestBody": {
+                                                                            "content": {
+                                                                                           "application/json": {
+                                                                                                                  "schema": {
+                                                                                                                                "type": "object",
+                                                                                                                                "properties": {
+                                                                                                                                                  "scheduled_at": {"type": "string", "format": "date-time"},
+                                                                                                                                                  "location": {"type": "string"},
+                                                                                                                                                  "notes": {"type": "string"},
+                                                                                                                                                  "status": {"type": "string", "enum": ["pending", "confirmed", "completed"]}
+                                                                                                                                              }
+                                                                                                                            }
+                                                                                                              }
+                                                                                       }
+                                                                        },
+                                                         "responses": {
+                                                                         "200": {"description": "Schedule updated — seeker notified"},
+                                                                         "400": {"description": "Cannot update a cancelled schedule / past date / time conflict"},
+                                                                         "403": {"description": "Not your schedule"},
+                                                                         "404": {"description": "Schedule not found"},
+                                                                         "409": {"description": "Time conflict with existing schedule"}
+                                                                     }
+                                                     },
+                                            "delete": {
+                                                          "tags": ["Schedule"],
+                                                          "summary": "Cancel a scheduled interview (Recruiter only)",
+                                                          "description": "Marks the schedule as cancelled and sends notification + cancellation email to the seeker.",
+                                                          "security": [{"bearerAuth": []}],
+                                                          "parameters": [
+                                                                            {
+                                                                                "in": "path",
+                                                                                "name": "id",
+                                                                                "required": true,
+                                                                                "schema": {"type": "integer"}
+                                                                            }
+                                                                        ],
+                                                          "requestBody": {
+                                                                             "content": {
+                                                                                            "application/json": {
+                                                                                                                   "schema": {
+                                                                                                                                 "type": "object",
+                                                                                                                                 "properties": {
+                                                                                                                                                   "reason": {"type": "string", "example": "Position has been filled."}
+                                                                                                                                               }
+                                                                                                                             }
+                                                                                                               }
+                                                                                        }
+                                                                         },
+                                                          "responses": {
+                                                                          "200": {"description": "Schedule cancelled — seeker notified via app + email"},
+                                                                          "400": {"description": "Already cancelled"},
+                                                                          "403": {"description": "Not your schedule"}
+                                                                      }
+                                                      }
+                                        }
               }
 }
