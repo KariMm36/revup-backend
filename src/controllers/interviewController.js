@@ -23,28 +23,6 @@ const normalizeQuestion = (q) => {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fetch the AI report with up to `maxRetries` attempts and `delayMs` between them.
-// Returns the report object, or null if all attempts fail.
-// ─────────────────────────────────────────────────────────────────────────────
-const fetchReportWithRetry = async (aiInterviewId, maxRetries = 3, delayMs = 2000) => {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      const report = await aiService.getAIReport(aiInterviewId);
-      if (report) return report;
-    } catch (err) {
-      const status = err.response?.status;
-      const detail = err.response?.data ?? err.message;
-      console.warn(`[Interview] getAIReport attempt ${attempt}/${maxRetries} failed for ai_interview_id=${aiInterviewId}`, { status, detail });
-      if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-  console.error(`[Interview] getAIReport gave up after ${maxRetries} attempts for ai_interview_id=${aiInterviewId}`);
-  return null;
-};
-
-// ─────────────────────────────────────────────────────────────────────────────
 // POST /api/interview/start
 // Seeker starts a conversational AI interview for a job they applied to
 // ─────────────────────────────────────────────────────────────────────────────
@@ -243,8 +221,14 @@ exports.submitAnswer = async (req, res, next) => {
 
     // If interview is complete, finalize
     if (is_complete) {
-      // Fetch the full report from AI — retry up to 3 times with 2s delay
-      const report = await fetchReportWithRetry(interview.ai_interview_id);
+      // The report takes 30-90s to generate on the AI side.
+      // We do one quick fetch just in case, but expect it to fail. The frontend MUST poll /report.
+      let report = null;
+      try {
+        report = await aiService.getAIReport(interview.ai_interview_id);
+      } catch (reportErr) {
+        console.log(`[Interview] AI report not ready yet for ai_interview_id=${interview.ai_interview_id}. Frontend will poll.`);
+      }
 
       // Compute total_score as the mean of all answer scores
       const scores = updatedAnswers.map((a) => a.score).filter((s) => typeof s === 'number');
