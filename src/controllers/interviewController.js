@@ -225,8 +225,11 @@ exports.submitAnswer = async (req, res, next) => {
       let report = null;
       try {
         report = await aiService.getAIReport(interview.ai_interview_id);
-      } catch {
-        // Non-fatal — we still mark completed
+      } catch (reportErr) {
+        // Non-fatal — we still mark completed, but log so we can debug
+        const status = reportErr.response?.status;
+        const detail = reportErr.response?.data ?? reportErr.message;
+        console.error(`[Interview] getAIReport failed for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
       }
 
       // Compute total_score as the mean of all answer scores
@@ -382,6 +385,71 @@ exports.getMyInterviewDetail = async (req, res, next) => {
     }
 
     return res.status(200).json({ success: true, data: interview });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/interview/:id/report — Get the AI report for a completed interview
+// If report wasn't saved at completion time, re-fetches from AI and saves it.
+// ─────────────────────────────────────────────────────────────────────────────
+exports.getInterviewReport = async (req, res, next) => {
+  try {
+    const interview = await Interview.findByPk(req.params.id);
+    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
+
+    // Seeker can only view their own; recruiter access handled by getApplicantInterview
+    if (req.user.role === 'seeker' && interview.seeker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'This is not your interview.' });
+    }
+
+    if (!['completed', 'passed', 'failed'].includes(interview.status)) {
+      return res.status(400).json({ success: false, message: 'Report is only available after the interview is completed.' });
+    }
+
+    // If report is already stored, return it immediately
+    if (interview.report) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          interview_id: interview.id,
+          status: interview.status,
+          total_score: interview.total_score,
+          report: interview.report,
+          answers: interview.answers,
+        },
+      });
+    }
+
+    // Report is null — try to re-fetch from AI API and save it
+    let report = null;
+    try {
+      report = await aiService.getAIReport(interview.ai_interview_id);
+      if (report) await interview.update({ report });
+    } catch (reportErr) {
+      const status = reportErr.response?.status;
+      const detail = reportErr.response?.data ?? reportErr.message;
+      console.error(`[Interview] getAIReport re-fetch failed for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
+    }
+
+    if (!report) {
+      return res.status(502).json({
+        success: false,
+        message: 'Report is not yet available. The AI system may still be processing. Please try again in a moment.',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        interview_id: interview.id,
+        status: interview.status,
+        total_score: interview.total_score,
+        report,
+        answers: interview.answers,
+      },
+    });
   } catch (err) {
     next(err);
   }

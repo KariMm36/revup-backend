@@ -98,6 +98,36 @@ router.get('/:id/question', protect, authorize('seeker'), interviewController.ge
 
 /**
  * @openapi
+ * /api/interview/{id}/report:
+ *   get:
+ *     tags: [Interview]
+ *     summary: Get the AI report for a completed interview (Seeker or Recruiter)
+ *     description: |
+ *       Returns the full AI grading report and all answers for a completed interview.
+ *       If the report wasn't saved at completion time (e.g. due to a network error),
+ *       this endpoint will attempt to re-fetch it from the AI system and save it.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Report object with total_score, answers, and full AI report
+ *       400:
+ *         description: Interview not completed yet
+ *       403:
+ *         description: Not your interview
+ *       502:
+ *         description: Report not yet available from AI system — try again shortly
+ */
+router.get('/:id/report', protect, interviewController.getInterviewReport);
+
+
+/**
+ * @openapi
  * /api/interview/{id}/answer:
  *   post:
  *     tags: [Interview]
