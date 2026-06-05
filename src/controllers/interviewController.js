@@ -183,8 +183,16 @@ exports.submitAnswer = async (req, res, next) => {
         answer,
         time_taken_seconds,
       });
-    } catch {
-      return res.status(502).json({ success: false, message: 'AI grading service is currently unavailable.' });
+    } catch (aiErr) {
+      // Log the real error so we can debug AI API issues
+      const status  = aiErr.response?.status;
+      const detail  = aiErr.response?.data ?? aiErr.message;
+      console.error(`[Interview] submitAIAnswer failed for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
+      return res.status(502).json({
+        success: false,
+        message: 'AI grading service is currently unavailable.',
+        debug: process.env.NODE_ENV === 'development' ? { status, detail } : undefined,
+      });
     }
 
     const { evaluation, is_complete } = aiResponse;
@@ -265,8 +273,11 @@ exports.submitAnswer = async (req, res, next) => {
       nextQuestion = normalizeQuestion(rawNext);
       // If AI returned a question but content was empty, flag it so frontend knows
       if (!nextQuestion && rawNext) nextQuestionUnavailable = true;
-    } catch {
+    } catch (nextErr) {
       // Non-fatal — frontend can call GET /:id/question as a fallback
+      const status = nextErr.response?.status;
+      const detail = nextErr.response?.data ?? nextErr.message;
+      console.error(`[Interview] getNextAIQuestion failed after answer for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
       nextQuestionUnavailable = true;
     }
 

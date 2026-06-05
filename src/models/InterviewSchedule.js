@@ -20,9 +20,10 @@ const InterviewSchedule = sequelize.define('InterviewSchedule', {
     allowNull: false,
   },
   // The recruiter who scheduled it
+  // allowNull: true — required for onDelete: 'SET NULL' FK (MySQL errno 150 otherwise)
   recruiter_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
   },
   // When is the real interview?
   scheduled_at: {

@@ -10,10 +10,12 @@ const { startRules, answerRules, cheatEventRules, decisionRules } = require('../
 const rateLimit = require('express-rate-limit');
 
 // ── Rate Limiters ─────────────────────────────────────────────────────────────
+// In development: effectively unlimited (1000). In production: use INTERVIEW_RATE_LIMIT_MAX (default 5).
+const isDev = process.env.NODE_ENV === 'development';
 const startLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
-  message: { success: false, message: 'Too many interview attempts. You can start up to 5 interviews per hour.' },
+  max: isDev ? 1000 : (parseInt(process.env.INTERVIEW_RATE_LIMIT_MAX) || 5),
+  message: { success: false, message: `Too many interview attempts. You can start up to ${parseInt(process.env.INTERVIEW_RATE_LIMIT_MAX) || 5} interviews per hour.` },
   standardHeaders: true,
   legacyHeaders: false,
 });

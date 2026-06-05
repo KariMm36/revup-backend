@@ -31,12 +31,12 @@ const User = sequelize.define('User', {
   google_id: {
     type: DataTypes.STRING(255),
     allowNull: true,
-    unique: true,
+    // unique index removed — MySQL 64-key limit; uniqueness enforced at app level
   },
   github_id: {
     type: DataTypes.STRING(255),
     allowNull: true,
-    unique: true,
+    // unique index removed — MySQL 64-key limit; uniqueness enforced at app level
   },
   bio: {
     type: DataTypes.TEXT,
