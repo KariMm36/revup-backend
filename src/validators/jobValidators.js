@@ -12,6 +12,13 @@ const createJobRules = [
     .withMessage('Invalid job type.'),
   body('salary_range').optional().trim().isLength({ max: 100 }),
   body('skillIds').optional().isArray().withMessage('skillIds must be an array.'),
+  body('application_deadline')
+    .optional()
+    .isISO8601().withMessage('application_deadline must be a valid date (ISO 8601).')
+    .custom((value) => {
+      if (new Date(value) <= new Date()) throw new Error('application_deadline must be a future date.');
+      return true;
+    }),
 ];
 
 const updateJobRules = [
@@ -22,6 +29,9 @@ const updateJobRules = [
     .isIn(['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote', 'Hybrid'])
     .withMessage('Invalid job type.'),
   body('skillIds').optional().isArray().withMessage('skillIds must be an array.'),
+  body('application_deadline')
+    .optional()
+    .isISO8601().withMessage('application_deadline must be a valid date (ISO 8601).'),
 ];
 
 module.exports = { createJobRules, updateJobRules };

@@ -35,6 +35,11 @@ const Job = sequelize.define('Job', {
     allowNull: false,
     defaultValue: 'open',
   },
+  // Optional deadline — applications rejected after this date
+  application_deadline: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
   company_id: {
     type: DataTypes.INTEGER,
     allowNull: false,

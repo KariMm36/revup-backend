@@ -15,7 +15,7 @@ const start = async () => {
 
     const {
       User, RefreshToken, Experience, Education, Certification,
-      Interview, InterviewSchedule,
+      Interview, InterviewSchedule, Application, Job,
     } = require('./src/models');
 
     // ── Sync strategy ────────────────────────────────────────────────────────
@@ -36,7 +36,7 @@ const start = async () => {
     }
 
     // Models that get alter:true (but NOT User — too many indexes)
-    const alterModels = { RefreshToken, Experience, Education, Certification, Interview };
+    const alterModels = { RefreshToken, Experience, Education, Certification, Interview, Application, Job };
     for (const [name, model] of Object.entries(alterModels)) {
       try {
         await model.sync({ alter: true });

@@ -26,9 +26,19 @@ const Application = sequelize.define('Application', {
     allowNull: true,
   },
   status: {
-    type: DataTypes.ENUM('applied', 'shortlisted', 'rejected', 'hired'),
+    type: DataTypes.ENUM('applied', 'under_review', 'shortlisted', 'rejected', 'hired'),
     allowNull: false,
     defaultValue: 'applied',
+  },
+  // Shown to seeker when rejected
+  rejection_reason: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  // Internal HR notes — never exposed to seeker
+  hr_notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
   },
 }, {
   tableName: 'applications',

@@ -138,7 +138,27 @@ exports.getMyPostings = async (req, res, next) => {
       include: [{ model: Skill, as: 'skills', through: { attributes: [] } }],
       order: [['createdAt', 'DESC']],
     });
-    return res.status(200).json({ success: true, data: jobs });
+
+    // Attach applicant count per job
+    const jobIds = jobs.map(j => j.id);
+    const counts = jobIds.length > 0
+      ? await Application.findAll({
+          where: { job_id: jobIds },
+          attributes: ['job_id', [sequelize.fn('COUNT', sequelize.col('id')), 'applicant_count']],
+          group: ['job_id'],
+          raw: true,
+        })
+      : [];
+
+    const countMap = {};
+    for (const c of counts) countMap[c.job_id] = parseInt(c.applicant_count);
+
+    const enriched = jobs.map(j => ({
+      ...j.toJSON(),
+      applicant_count: countMap[j.id] || 0,
+    }));
+
+    return res.status(200).json({ success: true, data: enriched });
   } catch (err) {
     next(err);
   }
@@ -166,8 +186,8 @@ exports.createJob = async (req, res, next) => {
     const company = await getRecruiterCompany(req.user.id);
     if (!company) return res.status(400).json({ success: false, message: 'You must be associated with a company before posting jobs.' });
 
-    const { title, description, location, job_type, salary_range, skillIds } = req.body;
-    const job = await Job.create({ title, description, location, job_type, salary_range, company_id: company.id });
+    const { title, description, location, job_type, salary_range, skillIds, application_deadline } = req.body;
+    const job = await Job.create({ title, description, location, job_type, salary_range, application_deadline: application_deadline || null, company_id: company.id });
 
     if (skillIds && skillIds.length > 0) await job.setSkills(skillIds);
 
@@ -191,8 +211,8 @@ exports.updateJob = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Forbidden.' });
     }
 
-    const { title, description, location, job_type, salary_range, skillIds } = req.body;
-    await job.update({ title, description, location, job_type, salary_range });
+    const { title, description, location, job_type, salary_range, skillIds, application_deadline } = req.body;
+    await job.update({ title, description, location, job_type, salary_range, application_deadline: application_deadline !== undefined ? application_deadline : job.application_deadline });
     if (skillIds) await job.setSkills(skillIds);
 
     return res.status(200).json({ success: true, message: 'Job updated.', data: job });
