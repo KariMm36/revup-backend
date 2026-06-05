@@ -184,10 +184,19 @@ exports.submitAnswer = async (req, res, next) => {
         time_taken_seconds,
       });
     } catch (aiErr) {
-      // Log the real error so we can debug AI API issues
-      const status  = aiErr.response?.status;
-      const detail  = aiErr.response?.data ?? aiErr.message;
+      const status = aiErr.response?.status;
+      const detail = aiErr.response?.data ?? aiErr.message;
       console.error(`[Interview] submitAIAnswer failed for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
+
+      // ── Detect duplicate submission (AI API returns 400 "already submitted") ──
+      const aiMessage = typeof detail === 'object' ? detail?.detail : detail;
+      if (status === 400 && typeof aiMessage === 'string' && aiMessage.toLowerCase().includes('already submitted')) {
+        return res.status(409).json({
+          success: false,
+          message: 'This question has already been answered. Please fetch the next question and continue.',
+        });
+      }
+
       return res.status(502).json({
         success: false,
         message: 'AI grading service is currently unavailable.',
