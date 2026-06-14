@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { User, RefreshToken } = require('../models');
-const { sendWelcomeEmail, sendPasswordResetEmail } = require('../services/emailService');
+const { sendWelcomeEmail, sendPasswordResetEmail, sendOtpEmail } = require('../services/emailService');
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 const generateToken = (user) =>
@@ -72,6 +72,81 @@ exports.login = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact support.' });
     }
 
+    // ── 2FA: generate OTP, hash it, save to DB, send email ───────────────────
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit
+    const hashedOtp = await bcrypt.hash(otpCode, 10);
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await user.update({ otp_code: hashedOtp, otp_expiry: otpExpiry });
+
+    // Send OTP email (non-blocking on failure — but we still await it so the user gets it)
+    try {
+      await sendOtpEmail({ to: user.email, name: user.name, code: otpCode });
+    } catch (emailErr) {
+      console.error('[2FA] Failed to send OTP email:', emailErr.message);
+      return res.status(502).json({ success: false, message: 'Failed to send verification email. Please try again.' });
+    }
+
+    // Issue a short-lived OTP token (5 min) — NOT a real auth token
+    const otpToken = jwt.sign(
+      { id: user.id, purpose: 'otp' },
+      process.env.JWT_SECRET,
+      { expiresIn: '5m' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      requires_otp: true,
+      message: `A 6-digit verification code has been sent to ${user.email}.`,
+      otp_token: otpToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// POST /api/auth/verify-otp
+exports.verifyOtp = async (req, res, next) => {
+  try {
+    const { otp_token, code } = req.body;
+
+    if (!otp_token || !code) {
+      return res.status(400).json({ success: false, message: 'otp_token and code are required.' });
+    }
+
+    // 1. Decode and validate the OTP token
+    let decoded;
+    try {
+      decoded = jwt.verify(otp_token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(401).json({ success: false, message: 'Verification session expired. Please log in again.' });
+    }
+
+    if (decoded.purpose !== 'otp') {
+      return res.status(401).json({ success: false, message: 'Invalid token.' });
+    }
+
+    // 2. Load the user
+    const user = await User.findByPk(decoded.id);
+    if (!user || !user.otp_code || !user.otp_expiry) {
+      return res.status(401).json({ success: false, message: 'No pending verification found. Please log in again.' });
+    }
+
+    // 3. Check expiry
+    if (new Date() > user.otp_expiry) {
+      await user.update({ otp_code: null, otp_expiry: null });
+      return res.status(401).json({ success: false, message: 'Verification code has expired. Please log in again.' });
+    }
+
+    // 4. Verify the code
+    const isMatch = await bcrypt.compare(String(code), user.otp_code);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid verification code.' });
+    }
+
+    // 5. Clear the OTP and issue real tokens
+    await user.update({ otp_code: null, otp_expiry: null });
+
     const token = generateToken(user);
     const refreshToken = await generateRefreshToken(user);
 
@@ -81,9 +156,10 @@ exports.login = async (req, res, next) => {
       sameSite: 'strict',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
     return res.status(200).json({
       success: true,
-      message: 'Logged in successfully.',
+      message: 'Login successful.',
       token,
       user: { id: user.id, name: user.name, email: user.email, role: user.role },
     });
@@ -91,6 +167,7 @@ exports.login = async (req, res, next) => {
     next(err);
   }
 };
+
 
 // POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res, next) => {

@@ -76,6 +76,19 @@ const User = sequelize.define('User', {
     allowNull: false,
     defaultValue: 0,
   },
+  // ── 2FA — Email OTP ──────────────────────────────────────────────────────────
+  // otp_code: bcrypt hash of the 6-digit code sent to the user's email
+  // otp_expiry: when the code expires (10 minutes from issue)
+  otp_code: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null,
+  },
+  otp_expiry: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    defaultValue: null,
+  },
   // ── Multi-recruiter support ──────────────────────────────────────────────────
   // A recruiter is assigned to a company by the company owner.
   // Null for seekers and admins.

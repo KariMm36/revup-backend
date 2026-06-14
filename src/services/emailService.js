@@ -142,10 +142,36 @@ const sendInterviewCancelledEmail = async ({ to, seekerName, track, scheduledAt,
   });
 };
 
+/**
+ * Send a 2FA OTP verification email
+ */
+const sendOtpEmail = async ({ to, name, code }) => {
+  await transporter.sendMail({
+    from: `"RevUp" <${process.env.GMAIL_USER}>`,
+    to,
+    subject: `🔐 Your RevUp Verification Code: ${code}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border-radius: 8px; background: #f9f9f9;">
+        <h2 style="color: #4F46E5;">🔐 Login Verification</h2>
+        <p style="color: #333;">Hi <strong>${name}</strong>,</p>
+        <p style="color: #333;">Use the code below to complete your login. This code expires in <strong>10 minutes</strong> and can only be used once.</p>
+        <div style="margin: 24px 0; text-align: center;">
+          <div style="display: inline-block; padding: 20px 40px; background: #4F46E5; border-radius: 8px;">
+            <span style="font-size: 36px; font-weight: bold; color: #ffffff; letter-spacing: 10px;">${code}</span>
+          </div>
+        </div>
+        <p style="color: #555; font-size: 14px;">If you didn't try to log in, someone may have your password. We recommend changing it immediately.</p>
+        <p style="margin-top: 24px; font-size: 12px; color: #999;">This code expires at ${new Date(Date.now() + 10 * 60 * 1000).toUTCString()}.</p>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
   sendWelcomeEmail,
   sendPasswordResetEmail,
   sendApplicationStatusEmail,
   sendInterviewScheduleEmail,
   sendInterviewCancelledEmail,
+  sendOtpEmail,
 };

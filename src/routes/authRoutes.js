@@ -114,6 +114,37 @@ router.post('/login', authLimiter, loginRules, validate, authController.login);
 
 /**
  * @openapi
+ * /api/auth/verify-otp:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Verify 2FA OTP code and receive JWT
+ *     description: |
+ *       Called after a successful password login. Submit the `otp_token` from the login
+ *       response and the 6-digit code sent to the user's email to receive the real JWT.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp_token, code]
+ *             properties:
+ *               otp_token:
+ *                 type: string
+ *                 description: The temporary token returned by POST /api/auth/login
+ *               code:
+ *                 type: string
+ *                 example: "483921"
+ *                 description: The 6-digit code sent to the user's email
+ *     responses:
+ *       200: { description: Verified — JWT and user returned }
+ *       400: { description: Missing fields }
+ *       401: { description: Invalid or expired code / session }
+ */
+router.post('/verify-otp', authLimiter, authController.verifyOtp);
+
+/**
+ * @openapi
  * /api/auth/forgot-password:
  *   post:
  *     tags: [Auth]

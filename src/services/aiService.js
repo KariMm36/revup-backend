@@ -57,10 +57,9 @@ exports.parseCV = async (fileBuffer, originalName) => {
 // ─── AI Interview Platform ────────────────────────────────────────────────────
 const INTERVIEW_API_BASE = process.env.INTERVIEW_API_URL || 'https://situated-aloof-ambitious.ngrok-free.dev';
 
-// Shared axios instance with default headers (ngrok requires this)
 const interviewApiClient = axios.create({
   baseURL: INTERVIEW_API_BASE,
-  headers: { 'ngrok-skip-browser-warning': 'true' },
+  headers: { 'ngrok-skip-browser-warning': '69420' },
   timeout: 30000,
 });
 
@@ -160,7 +159,7 @@ exports.streamAIQuestion = async (aiInterviewId, questionId) => {
       responseType: 'stream',
       headers: {
         Accept: 'text/plain',
-        'ngrok-skip-browser-warning': 'true',
+        'ngrok-skip-browser-warning': '69420',
       },
       timeout: 60000, // streaming can take longer
     }
