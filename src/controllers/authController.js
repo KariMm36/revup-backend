@@ -72,6 +72,26 @@ exports.login = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'Your account has been suspended. Please contact support.' });
     }
 
+    // ── Bypass 2FA if ENABLE_2FA is strictly false (useful for testing/dev) ──
+    if (process.env.ENABLE_2FA === 'false') {
+      const token = generateToken(user);
+      const refreshToken = await generateRefreshToken(user);
+
+      res.cookie('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful (2FA Bypassed).',
+        token,
+        user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      });
+    }
+
     // ── 2FA: generate OTP, hash it, save to DB, send email ───────────────────
     const otpCode = String(Math.floor(100000 + Math.random() * 900000)); // 6-digit
     const hashedOtp = await bcrypt.hash(otpCode, 10);
