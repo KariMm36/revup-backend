@@ -6,4 +6,5 @@ seed.js
 seeds.js
 FRONTEND_GUIDE.md
 nodemon.json
-API_DOCUMENTATION.mdpostman_collection.json
+API_DOCUMENTATION.md
+postman_collection.json

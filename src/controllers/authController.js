@@ -169,6 +169,69 @@ exports.verifyOtp = async (req, res, next) => {
 };
 
 
+// POST /api/auth/resend-otp
+exports.resendOtp = async (req, res, next) => {
+  try {
+    const { otp_token } = req.body;
+
+    if (!otp_token) {
+      return res.status(400).json({ success: false, message: 'otp_token is required.' });
+    }
+
+    // 1. Decode token, ignoring expiration (so they can resend even if the 5 min window just closed)
+    let decoded;
+    try {
+      decoded = jwt.verify(otp_token, process.env.JWT_SECRET, { ignoreExpiration: true });
+    } catch {
+      return res.status(401).json({ success: false, message: 'Invalid session token. Please log in again.' });
+    }
+
+    if (decoded.purpose !== 'otp') {
+      return res.status(401).json({ success: false, message: 'Invalid token.' });
+    }
+
+    // Prevent spam: only allow resend if the token was issued less than 1 hour ago
+    if (Date.now() / 1000 - decoded.iat > 3600) {
+      return res.status(401).json({ success: false, message: 'Session expired entirely. Please log in again.' });
+    }
+
+    const user = await User.findByPk(decoded.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'User not found.' });
+    }
+
+    // 2. Generate new OTP
+    const otpCode = String(Math.floor(100000 + Math.random() * 900000));
+    const hashedOtp = await bcrypt.hash(otpCode, 10);
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    await user.update({ otp_code: hashedOtp, otp_expiry: otpExpiry });
+
+    // 3. Send email
+    try {
+      await sendOtpEmail({ to: user.email, name: user.name, code: otpCode });
+    } catch (emailErr) {
+      console.error('[2FA] Failed to resend OTP email:', emailErr.message);
+      return res.status(502).json({ success: false, message: 'Failed to send verification email. Please try again.' });
+    }
+
+    // 4. Issue a fresh 5-minute OTP token
+    const newOtpToken = jwt.sign(
+      { id: user.id, purpose: 'otp' },
+      process.env.JWT_SECRET,
+      { expiresIn: '5m' }
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: `A new 6-digit verification code has been sent to ${user.email}.`,
+      otp_token: newOtpToken,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res, next) => {
   try {

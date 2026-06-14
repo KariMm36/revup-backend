@@ -145,6 +145,34 @@ router.post('/verify-otp', authLimiter, authController.verifyOtp);
 
 /**
  * @openapi
+ * /api/auth/resend-otp:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Resend the 2FA OTP code
+ *     description: |
+ *       Request a new 6-digit OTP code to be sent to the user's email. You must provide the
+ *       `otp_token` from the original login request. Returns a fresh 5-minute `otp_token`.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [otp_token]
+ *             properties:
+ *               otp_token:
+ *                 type: string
+ *                 description: The temporary token returned by POST /api/auth/login
+ *     responses:
+ *       200: { description: New OTP sent, returns fresh otp_token }
+ *       400: { description: Missing fields }
+ *       401: { description: Invalid or expired session }
+ *       502: { description: Email failed to send }
+ */
+router.post('/resend-otp', authLimiter, authController.resendOtp);
+
+/**
+ * @openapi
  * /api/auth/forgot-password:
  *   post:
  *     tags: [Auth]

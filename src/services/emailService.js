@@ -149,7 +149,7 @@ const sendOtpEmail = async ({ to, name, code }) => {
   await transporter.sendMail({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
-    subject: `🔐 Your RevUp Verification Code: ${code}`,
+    subject: `Your RevUp Verification Code:`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border-radius: 8px; background: #f9f9f9;">
         <h2 style="color: #4F46E5;">🔐 Login Verification</h2>
