@@ -8,3 +8,7 @@ FRONTEND_GUIDE.md
 nodemon.json
 API_DOCUMENTATION.md
 postman_collection.json
+coverage/
+scripts/
+tests/
+jest.config.js
