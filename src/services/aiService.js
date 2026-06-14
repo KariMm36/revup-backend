@@ -107,11 +107,30 @@ exports.startAIInterview = async (aiJobId, name, email) => {
 
 /**
  * Get the next question for an ongoing interview.
+ * If it's an essay question and returns 'Thinking...', we fetch the stream and buffer it.
  * @param {number} aiInterviewId - The AI API's interview ID
  * @returns {Promise<{ id, question_type, content, options, difficulty }>}
  */
 exports.getNextAIQuestion = async (aiInterviewId) => {
   const { data } = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/question`);
+  
+  // If the Python API returns an empty string or "Thinking...", we need to fetch from the stream!
+  if (!data.content || data.content.trim() === 'Thinking...') {
+    try {
+      const streamRes = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/question/${data.id}/stream`, {
+        responseType: 'stream'
+      });
+      
+      const chunks = [];
+      for await (const chunk of streamRes.data) {
+        chunks.push(chunk);
+      }
+      data.content = Buffer.concat(chunks).toString('utf8').trim();
+    } catch (err) {
+      console.error('[AI Service] Failed to fetch stream for question:', err.message);
+    }
+  }
+
   return data; // QuestionResponse
 };
 

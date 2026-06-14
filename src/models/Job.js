@@ -44,6 +44,10 @@ const Job = sequelize.define('Job', {
     type: DataTypes.INTEGER,
     allowNull: false,
   },
+  revup_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+  },
 }, {
   tableName: 'jobs',
   timestamps: true,

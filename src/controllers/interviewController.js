@@ -69,6 +69,7 @@ exports.startInterview = async (req, res, next) => {
     let aiJobId;
     try {
       aiJobId = await aiService.findAIJobId(job_id);
+      console.log(`[DEBUG] Found Job ID: ${job.id}, aiJobId: ${aiJobId}`);
     } catch {
       return res.status(502).json({ success: false, message: 'AI interview service is currently unavailable.' });
     }
