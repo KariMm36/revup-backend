@@ -3,10 +3,6 @@
 const axios = require('axios');
 const FormData = require('form-data');
 
-/**
- * Service to interact with the Python AI APIs
- */
-
 // ─── CV Parser / Job Recommender ─────────────────────────────────────────────
 // If env var is not set, fallback to the known Railway URL
 const AI_BASE_URL = process.env.AI_API_URL || 'https://cvparser-with-recommendation-production.up.railway.app';
@@ -75,7 +71,7 @@ const interviewApiClient = axios.create({
  */
 exports.getAIJobs = async () => {
   try {
-    const { data } = await interviewApiClient.get('/api/v1/jobs/');
+    const { data } = await interviewApiClient.get('/api/v1/jobs');
     if (!Array.isArray(data)) throw new Error('AI jobs endpoint returned unexpected format');
     return data;
   } catch (err) {

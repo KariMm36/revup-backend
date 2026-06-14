@@ -49,7 +49,7 @@ const logoFilter = (req, file, cb) => {
   }
 };
 
-// ─── Profile Pic Storage (Images → Cloudinary /revup/profiles) ──────────────
+// ─── Profile Pic Storage ──────────────
 const profilePicStorage = new CloudinaryStorage({
   cloudinary,
   params: async (req, file) => ({
@@ -64,19 +64,19 @@ const profilePicStorage = new CloudinaryStorage({
 const uploadResume = multer({
   storage:    resumeStorage,
   fileFilter: resumeFilter,
-  limits:     { fileSize: 10 * 1024 * 1024 }, // 10 MB (AI parser supports up to 10MB)
+  limits:     { fileSize: 10 * 1024 * 1024 },
 });
 
 const uploadLogo = multer({
   storage:    logoStorage,
   fileFilter: logoFilter,
-  limits:     { fileSize: 2 * 1024 * 1024 },  // 2 MB
+  limits:     { fileSize: 2 * 1024 * 1024 },
 });
 
 const uploadProfilePic = multer({
   storage:    profilePicStorage,
   fileFilter: logoFilter,
-  limits:     { fileSize: 2 * 1024 * 1024 },  // 2 MB
+  limits:     { fileSize: 2 * 1024 * 1024 },
 });
 
 module.exports = { uploadResume, uploadLogo, uploadProfilePic };

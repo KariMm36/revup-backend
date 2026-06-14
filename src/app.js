@@ -103,6 +103,7 @@ app.use('/api/courses', courseRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/schedule',  scheduleRoutes);
+
 // Seed route disabled after initial DB population
 // app.use('/api/seed', seedRoutes);
 

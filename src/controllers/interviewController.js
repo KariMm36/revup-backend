@@ -13,8 +13,8 @@ const normalizeQuestion = (q) => {
   // Guard: AI API sometimes returns questions with empty content strings
   if (!q.content || q.content.trim() === '') return null;
   return {
-    id: q.id,
-    question_type: q.question_type,
+    id: q.question_id || q.id,
+    question_type: q.type || q.question_type,
     content: q.content.trim(),
     difficulty: q.difficulty || null,
     // Always return options as an array (null for open/technical questions)
@@ -91,7 +91,7 @@ exports.startInterview = async (req, res, next) => {
     // 6. Fetch the first question immediately
     let firstQuestion;
     try {
-      const rawQuestion = await aiService.getNextAIQuestion(aiInterview.id);
+      const rawQuestion = await aiService.getNextAIQuestion(aiInterview.interview_id || aiInterview.id);
       firstQuestion = normalizeQuestion(rawQuestion);
       if (!firstQuestion) {
         return res.status(502).json({ success: false, message: 'Interview started but the first question could not be loaded. Please retry.' });
@@ -104,7 +104,7 @@ exports.startInterview = async (req, res, next) => {
     const interview = await Interview.create({
       seeker_id: seekerId,
       job_id,
-      ai_interview_id: aiInterview.id,
+      ai_interview_id: aiInterview.interview_id || aiInterview.id,
       status: 'in_progress',
       api_version: 'v2',
       answers: [],

@@ -12,9 +12,6 @@ const options = {
       description: `
 ## RevUp — AI-Powered Job Portal API
 
-### ⚠️ Breaking Changes in v4.0.0
-The AI Interview system has been **fully replaced** with a new conversational API.
-See the [Interview Migration Guide](#tag/Interview) for details.
 `.trim(),
       contact: {
         name: 'RevUp Dev Team',

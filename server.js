@@ -18,13 +18,6 @@ const start = async () => {
       Interview, InterviewSchedule, Application, Job,
     } = require('./src/models');
 
-    // ── Sync strategy ────────────────────────────────────────────────────────
-    // User: skip alter — table is stable and already has ~64 indexes in MySQL.
-    //   Calling alter:true repeatedly causes "Too many keys" errors.
-    // InterviewSchedule: use force:false (create-if-not-exists only) — avoids
-    //   FK constraint errors when the table or its referenced tables already exist.
-    // All others: alter:true for safe column additions on restart.
-
     // Models that should only be created if they don't already exist
     const createOnlyModels = { InterviewSchedule };
     for (const [name, model] of Object.entries(createOnlyModels)) {
