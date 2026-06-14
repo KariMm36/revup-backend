@@ -48,20 +48,22 @@ exports.startInterview = async (req, res, next) => {
       });
     }
 
-    // 3. Guard: only one active interview per job
+    // 3. Guard: each seeker may only take ONE interview per job (active OR completed)
     const existing = await Interview.findOne({
       where: {
         seeker_id: seekerId,
         job_id,
         api_version: 'v2',
-        status: { [Op.notIn]: ['completed', 'passed', 'failed'] },
       },
     });
     if (existing) {
+      const isActive = !['completed', 'passed', 'failed'].includes(existing.status);
       return res.status(400).json({
         success: false,
-        message: 'You already have an active interview for this job.',
-        data: { interview_id: existing.id },
+        message: isActive
+          ? 'You already have an active interview for this job.'
+          : 'You have already completed the interview for this job. Only one attempt is allowed per job.',
+        data: { interview_id: existing.id, status: existing.status },
       });
     }
 
@@ -227,6 +229,8 @@ exports.submitAnswer = async (req, res, next) => {
       let report = null;
       try {
         report = await aiService.getAIReport(interview.ai_interview_id);
+        // Ensure report is a plain object (not a string)
+        if (report && typeof report === 'string') report = JSON.parse(report);
       } catch (reportErr) {
         console.log(`[Interview] AI report not ready yet for ai_interview_id=${interview.ai_interview_id}. Frontend will poll.`);
       }
@@ -409,13 +413,17 @@ exports.getInterviewReport = async (req, res, next) => {
 
     // If report is already stored, return it immediately
     if (interview.report) {
+      // Parse if stored as a JSON string
+      const reportObj = typeof interview.report === 'string'
+        ? JSON.parse(interview.report)
+        : interview.report;
       return res.status(200).json({
         success: true,
         data: {
           interview_id: interview.id,
           status: interview.status,
           total_score: interview.total_score,
-          report: interview.report,
+          report: reportObj,
           answers: interview.answers,
         },
       });
@@ -425,6 +433,8 @@ exports.getInterviewReport = async (req, res, next) => {
     let report = null;
     try {
       report = await aiService.getAIReport(interview.ai_interview_id);
+      // Ensure report is a plain object (not a string) before saving
+      if (report && typeof report === 'string') report = JSON.parse(report);
       if (report) await interview.update({ report });
     } catch (reportErr) {
       const status = reportErr.response?.status;

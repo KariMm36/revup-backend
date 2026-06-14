@@ -63,6 +63,13 @@ const interviewApiClient = axios.create({
   timeout: 30000,
 });
 
+// Separate client for report polling — shorter timeout so failed attempts retry faster
+const reportApiClient = axios.create({
+  baseURL: INTERVIEW_API_BASE,
+  headers: { 'ngrok-skip-browser-warning': '69420' },
+  timeout: 10000,
+});
+
 /**
  * Fetch all jobs from the AI Interview Platform.
  * Each job has { id, revup_id, title, description, skills, seniority }
@@ -160,7 +167,7 @@ exports.trackAICheatEvent = async (aiInterviewId, event) => {
  * @returns {Promise<Object>} Full report object
  */
 exports.getAIReport = async (aiInterviewId) => {
-  const { data } = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/report`);
+  const { data } = await reportApiClient.get(`/api/v1/interviews/${aiInterviewId}/report`);
   return data;
 };
 
