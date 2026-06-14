@@ -18,6 +18,15 @@ const start = async () => {
       Interview, InterviewSchedule, Application, Job,
     } = require('./src/models');
 
+    // Manually add OTP columns to 'users' table to bypass Sequelize 'alter:true' index issues
+    try {
+      await sequelize.query('ALTER TABLE users ADD COLUMN otp_code VARCHAR(255) DEFAULT NULL, ADD COLUMN otp_expiry DATETIME DEFAULT NULL;');
+      logger.info('[DB] Added OTP columns to users table successfully.');
+    } catch (err) {
+      // It will throw an error if the columns already exist, which is perfectly fine.
+      logger.info('[DB] OTP columns already exist or manual alter failed safely.');
+    }
+
     // Models that should only be created if they don't already exist
     const createOnlyModels = { InterviewSchedule };
     for (const [name, model] of Object.entries(createOnlyModels)) {
