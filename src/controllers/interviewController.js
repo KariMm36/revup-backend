@@ -565,3 +565,52 @@ exports.makeDecision = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /api/interview/:id/question/:questionId/stream
+// Proxy the AI API's SSE stream of a question's text directly to the client
+// ─────────────────────────────────────────────────────────────────────────────
+exports.streamQuestion = async (req, res, next) => {
+  try {
+    const interview = await Interview.findByPk(req.params.id, {
+      attributes: ['id', 'seeker_id', 'ai_interview_id', 'status'],
+    });
+
+    if (!interview) return res.status(404).json({ success: false, message: 'Interview not found.' });
+    if (interview.seeker_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'This is not your interview.' });
+    }
+    if (interview.status !== 'in_progress') {
+      return res.status(400).json({ success: false, message: 'This interview is not in progress.' });
+    }
+
+    const { questionId } = req.params;
+
+    let stream;
+    try {
+      stream = await aiService.streamAIQuestion(interview.ai_interview_id, questionId);
+    } catch (err) {
+      const status = err.response?.status;
+      const detail = err.response?.data ?? err.message;
+      console.error(`[Interview] streamAIQuestion failed for ai_interview_id=${interview.ai_interview_id}`, { status, detail });
+      return res.status(502).json({ success: false, message: 'AI streaming service is currently unavailable.' });
+    }
+
+    // Set headers for SSE / plain-text streaming
+    res.writeHead(200, {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no', // disable nginx buffering on Railway/Render
+    });
+
+    // Pipe AI stream → client; handle errors gracefully
+    stream.pipe(res);
+    stream.on('error', (streamErr) => {
+      console.error(`[Interview] Stream error for ai_interview_id=${interview.ai_interview_id}:`, streamErr.message);
+      if (!res.writableEnded) res.end();
+    });
+  } catch (err) {
+    next(err);
+  }
+};

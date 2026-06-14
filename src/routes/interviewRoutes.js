@@ -313,6 +313,40 @@ router.get('/applicant/:seekerId', protect, authorize('recruiter'), interviewCon
  *       404:
  *         description: Interview not found
  */
+/**
+ * @openapi
+ * /api/interview/{id}/question/{questionId}/stream:
+ *   get:
+ *     tags: [Interview]
+ *     summary: Stream the raw text of a question chunk-by-chunk (Seeker only)
+ *     description: |
+ *       Proxies the AI platform's Server-Sent Events stream directly to the client.
+ *       The response is plain text delivered in chunks as the AI generates it.
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Interview ID (local)
+ *       - in: path
+ *         name: questionId
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Question ID returned by the /question endpoint
+ *     responses:
+ *       200:
+ *         description: Stream of text chunks (text/plain)
+ *       400:
+ *         description: Interview not in progress
+ *       403:
+ *         description: Not your interview
+ *       502:
+ *         description: AI streaming service unavailable
+ */
+router.get('/:id/question/:questionId/stream', protect, authorize('seeker'), interviewController.streamQuestion);
+
 router.patch('/:id/decision', protect, authorize('recruiter'), decisionRules, validate, interviewController.makeDecision);
 
 module.exports = router;

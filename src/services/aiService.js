@@ -145,3 +145,25 @@ exports.getAIReport = async (aiInterviewId) => {
   const { data } = await interviewApiClient.get(`/api/v1/interviews/${aiInterviewId}/report`);
   return data;
 };
+
+/**
+ * Stream a question's text chunk-by-chunk via Server-Sent Events.
+ * Pipes the raw SSE stream from the AI API directly to the Express response.
+ * @param {number} aiInterviewId - The AI API's interview ID
+ * @param {number} questionId    - The question ID to stream
+ * @returns {Promise<import('stream').Readable>} A readable stream of text chunks
+ */
+exports.streamAIQuestion = async (aiInterviewId, questionId) => {
+  const response = await interviewApiClient.get(
+    `/api/v1/interviews/${aiInterviewId}/question/${questionId}/stream`,
+    {
+      responseType: 'stream',
+      headers: {
+        Accept: 'text/plain',
+        'ngrok-skip-browser-warning': 'true',
+      },
+      timeout: 60000, // streaming can take longer
+    }
+  );
+  return response.data; // Readable stream
+};
