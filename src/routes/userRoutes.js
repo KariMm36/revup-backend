@@ -6,7 +6,7 @@ const router = express.Router();
 const userController = require('../controllers/userController');
 const { protect, authorize } = require('../middlewares/auth');
 const validate = require('../middlewares/validate');
-const { updateProfileRules, updateSkillsRules } = require('../validators/userValidators');
+const { updateProfileRules, updateSkillsRules, updateExperienceRules, updateEducationRules, updateCertificationsRules } = require('../validators/userValidators');
 const { uploadResume, uploadProfilePic } = require('../config/multer');
 
 /**
@@ -40,6 +40,8 @@ const { uploadResume, uploadProfilePic } = require('../config/multer');
  *             properties:
  *               name: { type: string }
  *               bio:  { type: string }
+ *               phone: { type: string }
+ *               location: { type: string }
  *     responses:
  *       200: { description: Profile updated }
  */
@@ -103,6 +105,72 @@ router.get('/stats', protect, authorize('seeker'), userController.getSeekerStats
  *       200: { description: Skills updated }
  */
 router.put('/skills', protect, authorize('seeker'), updateSkillsRules, validate, userController.updateSkills);
+
+/**
+ * @openapi
+ * /api/users/experience:
+ *   put:
+ *     tags: [Users]
+ *     summary: Sync seeker experience (full replace)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               experience:
+ *                 type: array
+ *     responses:
+ *       200: { description: Experience updated }
+ */
+router.put('/experience', protect, authorize('seeker'), updateExperienceRules, validate, userController.updateExperience);
+
+/**
+ * @openapi
+ * /api/users/education:
+ *   put:
+ *     tags: [Users]
+ *     summary: Sync seeker education (full replace)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               education:
+ *                 type: array
+ *     responses:
+ *       200: { description: Education updated }
+ */
+router.put('/education', protect, authorize('seeker'), updateEducationRules, validate, userController.updateEducation);
+
+/**
+ * @openapi
+ * /api/users/certifications:
+ *   put:
+ *     tags: [Users]
+ *     summary: Sync seeker certifications (full replace)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               certifications:
+ *                 type: array
+ *     responses:
+ *       200: { description: Certifications updated }
+ */
+router.put('/certifications', protect, authorize('seeker'), updateCertificationsRules, validate, userController.updateCertifications);
 
 /**
  * @openapi

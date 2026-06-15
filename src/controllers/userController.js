@@ -26,9 +26,16 @@ exports.getProfile = async (req, res, next) => {
 // PUT /api/users/profile
 exports.updateProfile = async (req, res, next) => {
   try {
-    const { name, bio } = req.body;
+    const { name, bio, phone, location } = req.body;
     const user = await User.findByPk(req.user.id);
-    await user.update({ name: name || user.name, bio: bio || user.bio });
+    
+    const updates = {};
+    if (name !== undefined) updates.name = name;
+    if (bio !== undefined) updates.bio = bio;
+    if (phone !== undefined) updates.phone = phone;
+    if (location !== undefined) updates.location = location;
+
+    await user.update(updates);
 
     const updated = await User.findByPk(req.user.id, {
       attributes: { exclude: ['password', 'reset_token', 'reset_token_expiry'] },
@@ -52,6 +59,82 @@ exports.updateSkills = async (req, res, next) => {
       include: [{ model: Skill, as: 'skills', attributes: ['id', 'name'], through: { attributes: [] } }],
     });
     return res.status(200).json({ success: true, message: 'Skills updated.', data: updated.skills });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /api/users/experience
+exports.updateExperience = async (req, res, next) => {
+  try {
+    const { experience } = req.body;
+    const userId = req.user.id;
+
+    await Experience.destroy({ where: { user_id: userId } });
+    if (experience && experience.length > 0) {
+      await Experience.bulkCreate(
+        experience.map(e => ({
+          user_id: userId,
+          title: e.title,
+          company: e.company || '',
+          duration: e.duration || '',
+          description: e.description || ''
+        }))
+      );
+    }
+
+    const updated = await User.findByPk(userId, { include: [{ model: Experience, as: 'experience' }] });
+    return res.status(200).json({ success: true, message: 'Experience updated.', data: updated.experience });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /api/users/education
+exports.updateEducation = async (req, res, next) => {
+  try {
+    const { education } = req.body;
+    const userId = req.user.id;
+
+    await Education.destroy({ where: { user_id: userId } });
+    if (education && education.length > 0) {
+      await Education.bulkCreate(
+        education.map(e => ({
+          user_id: userId,
+          degree: e.degree,
+          university: e.university || '',
+          duration: e.duration || ''
+        }))
+      );
+    }
+
+    const updated = await User.findByPk(userId, { include: [{ model: Education, as: 'education' }] });
+    return res.status(200).json({ success: true, message: 'Education updated.', data: updated.education });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// PUT /api/users/certifications
+exports.updateCertifications = async (req, res, next) => {
+  try {
+    const { certifications } = req.body;
+    const userId = req.user.id;
+
+    await Certification.destroy({ where: { user_id: userId } });
+    if (certifications && certifications.length > 0) {
+      await Certification.bulkCreate(
+        certifications.map(c => ({
+          user_id: userId,
+          name: c.name,
+          organization: c.organization || '',
+          year: c.year || ''
+        }))
+      );
+    }
+
+    const updated = await User.findByPk(userId, { include: [{ model: Certification, as: 'certifications' }] });
+    return res.status(200).json({ success: true, message: 'Certifications updated.', data: updated.certifications });
   } catch (err) {
     next(err);
   }
