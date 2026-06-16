@@ -39,6 +39,15 @@ const start = async () => {
 
     // Models that get alter:true (but NOT User — too many indexes)
     const alterModels = { RefreshToken, Experience, Education, Certification, Interview, Application, Job };
+    
+    // Clean up orphaned interviews before syncing to prevent foreign key constraint errors
+    try {
+      await sequelize.query('DELETE FROM interviews WHERE job_id NOT IN (SELECT id FROM jobs)');
+      logger.info('[DB] Orphaned interviews cleaned up successfully.');
+    } catch (err) {
+      logger.warn(`[DB] Failed to clean up orphaned interviews: ${err.message}`);
+    }
+
     for (const [name, model] of Object.entries(alterModels)) {
       try {
         await model.sync({ alter: true });
