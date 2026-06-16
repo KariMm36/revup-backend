@@ -122,6 +122,10 @@ User.hasMany(LessonProgress, { foreignKey: 'user_id', as: 'lessonProgress', onDe
 User.hasMany(Interview, { foreignKey: 'seeker_id', as: 'interviews', onDelete: 'CASCADE' });
 Interview.belongsTo(User, { foreignKey: 'seeker_id', as: 'seeker' });
 
+// ─── Job <-> Interview ───────────────────────────────────────────────────────
+Job.hasMany(Interview, { foreignKey: 'job_id', as: 'interviews', onDelete: 'CASCADE' });
+Interview.belongsTo(Job, { foreignKey: 'job_id', as: 'job' });
+
 // ─── InterviewSchedule associations ──────────────────────────────────────────
 // Interview (passed) → has one Schedule
 Interview.hasOne(InterviewSchedule, { foreignKey: 'interview_id', as: 'schedule', onDelete: 'CASCADE' });

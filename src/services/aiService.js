@@ -63,11 +63,12 @@ const interviewApiClient = axios.create({
   timeout: 30000,
 });
 
-// Separate client for report polling — shorter timeout so failed attempts retry faster
+// Separate client for report fetching — longer timeout because AI report
+// generation takes 30–120 seconds after the interview completes
 const reportApiClient = axios.create({
   baseURL: INTERVIEW_API_BASE,
   headers: { 'ngrok-skip-browser-warning': '69420' },
-  timeout: 10000,
+  timeout: 120000,
 });
 
 /**

@@ -3,6 +3,7 @@
 const { Op } = require('sequelize');
 const { Interview, User, Notification, Application, Job, Company } = require('../models');
 const aiService = require('../services/aiService');
+const { scheduleInterviewExpiry } = require('../queues/interviewQueue');
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Normalize a raw question object from the AI API into a consistent shape.
@@ -113,6 +114,11 @@ exports.startInterview = async (req, res, next) => {
       answers: [],
     });
 
+    // 8. Schedule auto-expiry in case the seeker abandons the interview
+    if (scheduleInterviewExpiry) {
+      await scheduleInterviewExpiry(interview.id).catch(console.error);
+    }
+
     return res.status(201).json({
       success: true,
       message: `Interview started for "${job.title}". Good luck!`,
@@ -152,7 +158,50 @@ exports.getNextQuestion = async (req, res, next) => {
     }
 
     if (!question) {
-      return res.status(204).json({ success: false, message: 'No question available at this time. The interview may be complete on the AI side.' });
+      // ── EDGE CASE 1: Sync stuck interviews ──
+      // The AI returned no question. This usually means the AI side is complete, but 
+      // the local DB might still say "in_progress" if the final answer request crashed/dropped.
+      // Let's attempt to fetch the report to confirm it's done, and auto-complete it locally.
+      let report = null;
+      try {
+        report = await aiService.getAIReport(interview.ai_interview_id);
+        if (report && typeof report === 'string') report = JSON.parse(report);
+      } catch (err) {
+        // Report not ready yet, just means it's still processing
+      }
+
+      if (report) {
+        // Calculate the score from the existing answers
+        const scores = (interview.answers || []).map((a) => a.score).filter((s) => typeof s === 'number');
+        const totalScore = scores.length > 0
+          ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 100) / 100
+          : null;
+
+        await interview.update({
+          report,
+          total_score: totalScore,
+          status: 'completed',
+        });
+
+        // Notify recruiters of completion
+        const jobRecord = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
+        if (jobRecord) {
+          const recruiters = await User.findAll({
+            where: { role: 'recruiter', company_id: jobRecord.company_id },
+            attributes: ['id'],
+          });
+          if (recruiters.length > 0) {
+            await Notification.bulkCreate(
+              recruiters.map((r) => ({
+                user_id: r.id,
+                message: `${req.user.name} has completed their AI interview for "${jobRecord.title}". Score: ${totalScore ?? 'N/A'}%. Please review and make a decision.`,
+              }))
+            );
+          }
+        }
+      }
+
+      return res.status(204).json({ success: false, message: 'No question available at this time. The interview is complete on the AI side.' });
     }
 
     return res.status(200).json({ success: true, data: question });
@@ -483,18 +532,31 @@ exports.getApplicantInterview = async (req, res, next) => {
     }
     if (!company) return res.status(403).json({ success: false, message: 'You are not associated with any company.' });
 
-    const recruiterJobIds = (await Job.findAll({ where: { company_id: company.id }, attributes: ['id'] })).map(j => j.id);
-    if (recruiterJobIds.length === 0) return res.status(403).json({ success: false, message: 'Access denied.' });
-
-    const hasApplied = await Application.findOne({ where: { seeker_id: seekerId, job_id: recruiterJobIds } });
+    // Single JOIN query: check if seeker applied to ANY of this company's jobs
+    // This replaces the old pattern of: Job.findAll → map IDs → Application.findOne (N+1)
+    const hasApplied = await Application.findOne({
+      where: { seeker_id: seekerId },
+      include: [{
+        model: Job,
+        as: 'job',
+        attributes: [],
+        where: { company_id: company.id },
+        required: true,  // INNER JOIN — only match if the job belongs to this company
+      }],
+    });
     if (!hasApplied) return res.status(403).json({ success: false, message: 'You can only view interviews of seekers who applied to your jobs.' });
 
-    // Return only interviews for jobs owned by this recruiter's company
+    // Single JOIN query: fetch interviews only for jobs owned by this company
+    // This replaces the old pattern of: Job.findAll → map IDs → Interview.findAll with IN clause
     const interviews = await Interview.findAll({
-      where: {
-        seeker_id: seekerId,
-        job_id: recruiterJobIds,
-      },
+      where: { seeker_id: seekerId },
+      include: [{
+        model: Job,
+        as: 'job',
+        attributes: ['id', 'title'],
+        where: { company_id: company.id },
+        required: true,  // INNER JOIN — only return interviews for this company's jobs
+      }],
       order: [['createdAt', 'DESC']],
     });
 
