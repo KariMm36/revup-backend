@@ -40,7 +40,7 @@ router.get('/latest', cache(120), jobController.getLatestJobs);
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200: { description: List of recommended jobs enriched with AI match scores }
+ *       200: { description: List of recommended jobs enriched with AI match scores, explanations, and matched skills }
  */
 router.get('/recommended', protect, authorize('seeker'), jobController.getRecommendedJobs);
 

@@ -2790,7 +2790,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of recommended jobs enriched with AI match scores"
+            "description": "List of recommended jobs enriched with AI match scores, explanations, and matched skills"
           }
         }
       }
