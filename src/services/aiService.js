@@ -7,14 +7,19 @@ const FormData = require('form-data');
 // If env var is not set, fallback to the known Railway URL
 const AI_BASE_URL = process.env.AI_API_URL || 'https://cv-recommendation-production.up.railway.app';
 
-exports.getJobRecommendations = async (profileData) => {
+exports.getJobRecommendations = async (profileData, jobs = null) => {
   try {
     const aiUrl = `${AI_BASE_URL}/api/v1/recommend-jobs`;
-    const response = await axios.post(aiUrl, {
+    const payload = {
       skills: profileData.skills || [],
       title: profileData.title || '',
       summary: profileData.summary || ''
-    });
+    };
+    if (jobs) {
+      payload.jobs = jobs;
+    }
+    
+    const response = await axios.post(aiUrl, payload);
     
     // The AI returns { success: true, total: 10, recommendations: [...] }
     return response.data.recommendations || [];

@@ -88,34 +88,34 @@ exports.getRecommendedJobs = async (req, res, next) => {
       summary: user.bio || ''
     };
 
-    // 2. Call the AI recommendation service
-    const aiResults = await aiService.getJobRecommendations(profileData);
-    // aiResults = [ { job_id: 4, match_score: 53, ... }, ... ]
-
-    if (!aiResults || aiResults.length === 0) {
-      return res.status(200).json({ success: true, data: [] });
-    }
-
-    // 3. Build a score map: jobId → score (so we can attach it later)
-    const scoreMap = {};
-    const jobIds = aiResults.map(r => { 
-      scoreMap[r.job_id] = r.match_score; 
-      return r.job_id; 
-    });
-
-    // 4. Fetch those exact jobs from OUR database — with Company + Skills
-    const fullJobs = await Job.findAll({
-      where: { id: { [Op.in]: jobIds } },
+    // 2. Fetch all local open jobs to pass to the AI
+    const allOpenJobs = await Job.findAll({
+      where: { status: 'open' },
       include: [
         { model: Company, as: 'company', attributes: ['id', 'name', 'logo'] },
         { model: Skill,   as: 'skills',  through: { attributes: [] } },
       ],
     });
 
-    // 5. Re-sort to match the AI's ranking order and attach the score
+    // 3. Call the AI recommendation service, passing the local jobs
+    const aiResults = await aiService.getJobRecommendations(profileData, allOpenJobs.map(j => j.toJSON()));
+    // aiResults = [ { job_id: 4, match_score: 53, ... }, ... ]
+
+    if (!aiResults || aiResults.length === 0) {
+      return res.status(200).json({ success: true, data: [] });
+    }
+
+    // 4. Build a score map: jobId → score
+    const scoreMap = {};
+    const jobIds = aiResults.map(r => { 
+      scoreMap[r.job_id] = r.match_score; 
+      return r.job_id; 
+    });
+
+    // 5. Re-sort to match the AI's ranking order and attach the score using the pre-fetched jobs
     const enriched = jobIds
       .map(id => {
-        const job = fullJobs.find(j => j.id === id);
+        const job = allOpenJobs.find(j => j.id === id);
         if (!job) return null;
         return { job, score: scoreMap[id] };
       })
