@@ -5,7 +5,7 @@ const FormData = require('form-data');
 
 // ─── CV Parser / Job Recommender ─────────────────────────────────────────────
 // If env var is not set, fallback to the known Railway URL
-const AI_BASE_URL = process.env.AI_API_URL || 'https://cvparser-with-recommendation-production.up.railway.app';
+const AI_BASE_URL = process.env.AI_API_URL || 'https://cv-recommendation-production.up.railway.app';
 
 exports.getJobRecommendations = async (profileData) => {
   try {

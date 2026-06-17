@@ -3523,6 +3523,12 @@
                   },
                   "bio": {
                     "type": "string"
+                  },
+                  "phone": {
+                    "type": "string"
+                  },
+                  "location": {
+                    "type": "string"
                   }
                 }
               }
@@ -3634,6 +3640,105 @@
         "responses": {
           "200": {
             "description": "Skills updated"
+          }
+        }
+      }
+    },
+    "/api/users/experience": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Sync seeker experience (full replace)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "experience": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Experience updated"
+          }
+        }
+      }
+    },
+    "/api/users/education": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Sync seeker education (full replace)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "education": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Education updated"
+          }
+        }
+      }
+    },
+    "/api/users/certifications": {
+      "put": {
+        "tags": [
+          "Users"
+        ],
+        "summary": "Sync seeker certifications (full replace)",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "certifications": {
+                    "type": "array"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Certifications updated"
           }
         }
       }
