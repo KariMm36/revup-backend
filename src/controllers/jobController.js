@@ -105,10 +105,10 @@ exports.getRecommendedJobs = async (req, res, next) => {
       return res.status(200).json({ success: true, data: [] });
     }
 
-    // 4. Build a score map: jobId → score
-    const scoreMap = {};
+    // 4. Build a map of all AI data for each job
+    const aiDataMap = {};
     const jobIds = aiResults.map(r => { 
-      scoreMap[r.job_id] = r.match_score; 
+      aiDataMap[r.job_id] = r; 
       return r.job_id; 
     });
 
@@ -117,7 +117,14 @@ exports.getRecommendedJobs = async (req, res, next) => {
       .map(id => {
         const job = allOpenJobs.find(j => j.id === id);
         if (!job) return null;
-        return { job, score: scoreMap[id] };
+        const aiData = aiDataMap[id];
+        return { 
+          job, 
+          score: aiData.match_score,
+          match_score: aiData.match_score,
+          explanation: aiData.explanation,
+          matched_skills: aiData.matched_skills
+        };
       })
       .filter(Boolean);
 
