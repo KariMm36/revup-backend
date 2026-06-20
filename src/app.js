@@ -59,9 +59,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ─── Global Rate Limiting (dynamic via GLOBAL_RATE_LIMIT_MAX env var) ───────────
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.GLOBAL_RATE_LIMIT_MAX) || 100,
+  max: isDev ? 5000 : (parseInt(process.env.GLOBAL_RATE_LIMIT_MAX) || 100),
   message: { success: false, message: 'Too many requests from this IP, please try again after 15 minutes.' },
 });
 app.use('/api', globalLimiter);

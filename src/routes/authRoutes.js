@@ -15,9 +15,10 @@ const {
 const rateLimit = require('express-rate-limit');
 // AUTH_RATE_LIMIT_MAX can be set in Railway to a high value during testing (e.g. 100)
 // and reset to 10 when going to production
+const isDev = process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test';
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+  max: isDev ? 1000 : (parseInt(process.env.AUTH_RATE_LIMIT_MAX) || 10),
   message: { success: false, message: 'Too many attempts from this IP, please try again after 15 minutes.' },
 });
 
