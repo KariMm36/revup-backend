@@ -80,7 +80,7 @@ const sendApplicationStatusEmail = async ({ to, seekerName, jobTitle, companyNam
 /**
  * Send Interview Schedule email to seeker
  */
-const sendInterviewScheduleEmail = async ({ to, seekerName, track, scheduledAt, location, notes, recruiterName }) => {
+const sendInterviewScheduleEmail = async ({ to, seekerName, jobTitle, scheduledAt, location, notes, recruiterName }) => {
   const dateStr = new Date(scheduledAt).toLocaleString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
@@ -89,12 +89,12 @@ const sendInterviewScheduleEmail = async ({ to, seekerName, track, scheduledAt, 
   await transporter.sendMail({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
-    subject: `🗓️ Your ${track} Interview Has Been Scheduled — RevUp`,
+    subject: `🗓️ Your ${jobTitle} Interview Has Been Scheduled — RevUp`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border-radius: 8px; background: #f9f9f9;">
         <h2 style="color: #4F46E5;">🗓️ Interview Scheduled!</h2>
         <p style="color: #333;">Hi <strong>${seekerName}</strong>,</p>
-        <p style="color: #333;">Congratulations on passing your AI interview! Your real interview has been scheduled for the <strong>${track}</strong> track.</p>
+        <p style="color: #333;">Congratulations on passing your AI interview! Your real interview has been scheduled for the <strong>${jobTitle}</strong> position.</p>
         <div style="margin: 20px 0; padding: 20px; background: #fff; border-left: 4px solid #4F46E5; border-radius: 4px;">
           <p style="margin: 0 0 8px; color: #4F46E5; font-weight: bold; font-size: 16px;">📅 Date & Time</p>
           <p style="margin: 0 0 16px; color: #333;">${dateStr}</p>
@@ -118,7 +118,7 @@ const sendInterviewScheduleEmail = async ({ to, seekerName, track, scheduledAt, 
 /**
  * Send Interview Cancellation email to seeker
  */
-const sendInterviewCancelledEmail = async ({ to, seekerName, track, scheduledAt, reason }) => {
+const sendInterviewCancelledEmail = async ({ to, seekerName, jobTitle, scheduledAt, reason }) => {
   const dateStr = new Date(scheduledAt).toLocaleString('en-US', {
     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
     hour: '2-digit', minute: '2-digit',
@@ -127,12 +127,12 @@ const sendInterviewCancelledEmail = async ({ to, seekerName, track, scheduledAt,
   await transporter.sendMail({
     from: `"RevUp" <${process.env.GMAIL_USER}>`,
     to,
-    subject: `❌ Interview Cancelled — ${track} — RevUp`,
+    subject: `❌ Interview Cancelled — ${jobTitle} — RevUp`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 24px; border-radius: 8px; background: #f9f9f9;">
         <h2 style="color: #DC2626;">❌ Interview Cancelled</h2>
         <p style="color: #333;">Hi <strong>${seekerName}</strong>,</p>
-        <p style="color: #333;">We're sorry to inform you that your interview scheduled for the <strong>${track}</strong> track on <strong>${dateStr}</strong> has been cancelled.</p>
+        <p style="color: #333;">We're sorry to inform you that your interview scheduled for the <strong>${jobTitle}</strong> position on <strong>${dateStr}</strong> has been cancelled.</p>
         ${reason ? `<p style="color: #555;">Reason: <em>${reason}</em></p>` : ''}
         <p style="color: #333;">Please check RevUp for further updates or contact your recruiter.</p>
         <a href="${process.env.CLIENT_URL}/my-schedule" style="display:inline-block;margin-top:16px;padding:12px 24px;background:#4F46E5;color:#fff;border-radius:6px;text-decoration:none;">View My Schedule</a>

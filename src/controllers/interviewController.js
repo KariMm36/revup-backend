@@ -402,7 +402,8 @@ exports.getMyInterviews = async (req, res, next) => {
 
     const { count, rows } = await Interview.findAndCountAll({
       where: { seeker_id: req.user.id },
-      attributes: ['id', 'job_id', 'track', 'api_version', 'status', 'total_score', 'createdAt', 'updatedAt'],
+      attributes: ['id', 'job_id', 'api_version', 'status', 'total_score', 'createdAt', 'updatedAt'],
+      include: [{ model: Job, as: 'job', attributes: ['title'] }],
       order: [['createdAt', 'DESC']],
       limit,
       offset,
@@ -613,10 +614,22 @@ exports.makeDecision = async (req, res, next) => {
 
     await interview.update({ status: decision });
 
+    if (interview.job_id) {
+      const application = await Application.findOne({
+        where: { seeker_id: interview.seeker_id, job_id: interview.job_id }
+      });
+      if (application) {
+        await application.update({
+          status: decision === 'passed' ? 'shortlisted' : 'rejected',
+          rejection_reason: decision === 'failed' ? 'Did not pass recruiter review of AI interview.' : null
+        });
+      }
+    }
+
     // Notify the seeker
     const jobLabel = interview.job_id
       ? (await Job.findByPk(interview.job_id, { attributes: ['title'] }))?.title || 'the position'
-      : (interview.track ? `the ${interview.track} track` : 'the position');
+      : 'the position';
 
     const notificationMsg = decision === 'passed'
       ? `🎉 Congratulations, ${interview.seeker.name}! You passed the AI interview for ${jobLabel}. You will be scheduled for a real interview soon.`

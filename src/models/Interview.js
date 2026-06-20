@@ -63,23 +63,6 @@ const Interview = sequelize.define('Interview', {
     allowNull: true,
   },
 
-  // ─── Legacy v1 fields (kept nullable for backwards compatibility) ─────────────
-  track: {
-    type: DataTypes.ENUM('Frontend', 'Backend', 'AI Engineering', 'Data Engineering'),
-    allowNull: true,
-  },
-  questions: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  mcq_answers: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
-  written_answers: {
-    type: DataTypes.JSON,
-    allowNull: true,
-  },
 }, {
   tableName: 'interviews',
   timestamps: true,

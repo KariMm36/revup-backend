@@ -1,6 +1,6 @@
 'use strict';
 
-const { InterviewSchedule, Interview, User, Notification } = require('../models');
+const { InterviewSchedule, Interview, User, Notification, Job } = require('../models');
 const { sendInterviewScheduleEmail, sendInterviewCancelledEmail } = require('../services/emailService');
 const { Op } = require('sequelize');
 
@@ -24,7 +24,10 @@ exports.scheduleInterview = async (req, res, next) => {
 
     // Verify the interview exists and is in "passed" status
     const interview = await Interview.findByPk(interview_id, {
-      include: [{ model: User, as: 'seeker', attributes: ['id', 'name', 'email'] }],
+      include: [
+        { model: User, as: 'seeker', attributes: ['id', 'name', 'email'] },
+        { model: Job, as: 'job', attributes: ['title'] }
+      ],
     });
 
     if (!interview) {
@@ -89,14 +92,14 @@ exports.scheduleInterview = async (req, res, next) => {
     // In-app notification to seeker
     await Notification.create({
       user_id: interview.seeker_id,
-      message: `📅 Your real interview for the ${interview.track} track has been scheduled on ${new Date(scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}. ${location ? `Location: ${location}` : ''} Check your email for details!`,
+      message: `📅 Your real interview for ${interview.job ? interview.job.title : 'the position'} has been scheduled on ${new Date(scheduled_at).toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' })}. ${location ? `Location: ${location}` : ''} Check your email for details!`,
     });
 
     // Email notification (non-blocking)
     sendInterviewScheduleEmail({
       to: interview.seeker.email,
       seekerName: interview.seeker.name,
-      track: interview.track,
+      jobTitle: interview.job ? interview.job.title : 'the position',
       scheduledAt: scheduled_at,
       location,
       notes,
@@ -124,7 +127,8 @@ exports.getMySchedule = async (req, res, next) => {
         {
           model: Interview,
           as: 'interview',
-          attributes: ['id', 'track', 'total_score', 'status'],
+          attributes: ['id', 'total_score', 'status'],
+          include: [{ model: Job, as: 'job', attributes: ['title'] }]
         },
         {
           model: User,
@@ -152,7 +156,8 @@ exports.getRecruiterSchedules = async (req, res, next) => {
         {
           model: Interview,
           as: 'interview',
-          attributes: ['id', 'track', 'total_score'],
+          attributes: ['id', 'total_score'],
+          include: [{ model: Job, as: 'job', attributes: ['title'] }]
         },
         {
           model: User,
@@ -178,7 +183,12 @@ exports.updateSchedule = async (req, res, next) => {
 
     const schedule = await InterviewSchedule.findByPk(req.params.id, {
       include: [
-        { model: Interview, as: 'interview', attributes: ['track'] },
+        { 
+          model: Interview, 
+          as: 'interview', 
+          attributes: ['id'],
+          include: [{ model: Job, as: 'job', attributes: ['title'] }] 
+        },
         { model: User, as: 'seeker', attributes: ['id', 'name', 'email'] },
       ],
     });
@@ -241,7 +251,7 @@ exports.updateSchedule = async (req, res, next) => {
     // Notify seeker of the update
     await Notification.create({
       user_id: schedule.seeker_id,
-      message: `📅 Your scheduled interview for the ${schedule.interview.track} track has been updated. Please check the new details.`,
+      message: `📅 Your scheduled interview for ${schedule.interview.job ? schedule.interview.job.title : 'the position'} has been updated. Please check the new details.`,
     });
 
     return res.status(200).json({
@@ -263,7 +273,12 @@ exports.cancelSchedule = async (req, res, next) => {
 
     const schedule = await InterviewSchedule.findByPk(req.params.id, {
       include: [
-        { model: Interview, as: 'interview', attributes: ['track'] },
+        { 
+          model: Interview, 
+          as: 'interview', 
+          attributes: ['id'],
+          include: [{ model: Job, as: 'job', attributes: ['title'] }] 
+        },
         { model: User, as: 'seeker', attributes: ['id', 'name', 'email'] },
       ],
     });
@@ -283,14 +298,14 @@ exports.cancelSchedule = async (req, res, next) => {
     // In-app notification
     await Notification.create({
       user_id: schedule.seeker_id,
-      message: `❌ Your scheduled interview for the ${schedule.interview.track} track has been cancelled. ${reason ? `Reason: ${reason}` : ''} Please check RevUp for updates.`,
+      message: `❌ Your scheduled interview for ${schedule.interview.job ? schedule.interview.job.title : 'the position'} has been cancelled. ${reason ? `Reason: ${reason}` : ''} Please check RevUp for updates.`,
     });
 
     // Email notification (non-blocking)
     sendInterviewCancelledEmail({
       to: schedule.seeker.email,
       seekerName: schedule.seeker.name,
-      track: schedule.interview.track,
+      jobTitle: schedule.interview.job ? schedule.interview.job.title : 'the position',
       scheduledAt: schedule.scheduled_at,
       reason,
     }).catch(console.error);
