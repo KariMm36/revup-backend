@@ -177,35 +177,13 @@ exports.getNextQuestion = async (req, res, next) => {
           ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 100) / 100
           : null;
 
-        const isFailed = totalScore !== null && totalScore < 60;
-        const finalStatus = isFailed ? 'failed' : 'completed';
-
         await interview.update({
           report,
           total_score: totalScore,
-          status: finalStatus,
+          status: 'completed',
         });
 
-        // Auto-reject Application if failed
-        if (isFailed && interview.job_id) {
-          const application = await Application.findOne({
-            where: { seeker_id: interview.seeker_id, job_id: interview.job_id }
-          });
-          if (application) {
-            await application.update({
-              status: 'rejected',
-              rejection_reason: `Automatic rejection: Failed AI interview with a score of ${totalScore}%.`
-            });
-            // Notify seeker about the rejection
-            await Notification.create({
-              user_id: interview.seeker_id,
-              message: `Unfortunately, you did not pass the AI interview. Your application has been rejected.`
-            });
-          }
-        }
-
-        // Notify recruiters of completion (only if not auto-failed)
-        if (!isFailed) {
+        // Notify recruiters of completion
         const jobRecord = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
         if (jobRecord) {
           const recruiters = await User.findAll({
@@ -221,7 +199,6 @@ exports.getNextQuestion = async (req, res, next) => {
             );
           }
         }
-      }
       }
 
       return res.status(204).json({ success: false, message: 'No question available at this time. The interview is complete on the AI side.' });
@@ -313,36 +290,15 @@ exports.submitAnswer = async (req, res, next) => {
         ? Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 100) / 100
         : null;
 
-      const isFailed = totalScore !== null && totalScore < 60;
-      const finalStatus = isFailed ? 'failed' : 'completed';
-
       await interview.update({
         answers: updatedAnswers,
         report,
         total_score: totalScore,
-        status: finalStatus,
+        status: 'completed',
       });
 
-      // Auto-reject Application if failed
-      if (isFailed && interview.job_id) {
-        const application = await Application.findOne({
-          where: { seeker_id: interview.seeker_id, job_id: interview.job_id }
-        });
-        if (application) {
-          await application.update({
-            status: 'rejected',
-            rejection_reason: `Automatic rejection: Failed AI interview with a score of ${totalScore}%.`
-          });
-          await Notification.create({
-            user_id: interview.seeker_id,
-            message: `Unfortunately, you did not pass the AI interview. Your application has been rejected.`
-          });
-        }
-      }
-
       // ── Notify recruiters of the company that posted the job ──────────────
-      if (!isFailed) {
-        const jobRecord = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
+      const jobRecord = await Job.findByPk(interview.job_id, { attributes: ['company_id', 'title'] });
       if (jobRecord) {
         const recruiters = await User.findAll({
           where: { role: 'recruiter', company_id: jobRecord.company_id },
@@ -357,7 +313,6 @@ exports.submitAnswer = async (req, res, next) => {
           );
         }
       }
-    }
 
       return res.status(200).json({
         success: true,
